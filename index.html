@@ -1154,6 +1154,7 @@ function renderResults() {
 function initials(name) { return name.charAt(0).toUpperCase(); }
 
 function updateSwimmerUI() {
+  if (!STATE || !STATE.currentSwimmer) return;
   const name = STATE.currentSwimmer;
   const color = currentColor();
   ['results','add','chart','profile'].forEach(id => {
@@ -1233,17 +1234,25 @@ function parseSeconds(t) {
 }
 
 function initForm() {
-  document.getElementById('form-date').value = new Date().toISOString().slice(0,10);
+  const formDate = document.getElementById('form-date');
+  if (formDate) formDate.value = new Date().toISOString().slice(0,10);
+
   ['form-dist','form-nage'].forEach(id => {
-    document.getElementById(id).querySelectorAll('.chip-sel').forEach(b => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.querySelectorAll('.chip-sel').forEach(b => {
       b.onclick = () => {
-        document.getElementById(id).querySelectorAll('.chip-sel').forEach(x => x.classList.remove('active'));
+        el.querySelectorAll('.chip-sel').forEach(x => x.classList.remove('active'));
         b.classList.add('active');
       };
     });
   });
-  document.getElementById('btn-submit').onclick = submitForm;
-  document.getElementById('new-sw-input').addEventListener('keydown', e => { if (e.key==='Enter') addSwimmer(); });
+
+  const btnSubmit = document.getElementById('btn-submit');
+  if (btnSubmit) btnSubmit.onclick = submitForm;
+
+  const swInput = document.getElementById('new-sw-input');
+  if (swInput) swInput.addEventListener('keydown', e => { if (e.key==='Enter') addSwimmer(); });
 }
 
 function submitForm() {
