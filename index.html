@@ -17,7 +17,7 @@
 // ── FIREBASE INIT ─────────────────────────────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBlKWmcz162vvSZ-cPVJof_98I3ZyFfyb0",
@@ -51,22 +51,9 @@ window.fsOnSnapshot = onSnapshot;
 window.fsCollection = collection;
 window.fsSignIn = signInWithEmailAndPassword;
 window.fsCreateUser = createUserWithEmailAndPassword;
-window.fsGoogleSignIn = async (auth, provider) => {
-  await signInWithRedirect(auth, provider);
-};
-// Gérer le retour après redirection Google
-getRedirectResult(auth).then(result => {
-  if (result && result.user) {
-    console.log('Google redirect result OK:', result.user.email);
-  }
-}).catch(e => {
-  if (e.code !== 'auth/no-current-user') {
-    console.warn('Redirect result error:', e.code, e.message);
-  }
-});
 window.fsSignOut = () => signOut(auth);
-window.fsDeleteUser = (user) => deleteUser(user);
 window.fsOnAuthStateChanged = (cb) => onAuthStateChanged(auth, cb);
+window.fsGoogleSignIn = (auth, provider) => signInWithPopup(auth, provider);
 window.firebaseReady = true;
 window.dispatchEvent(new Event('firebaseReady'));
 </script>
@@ -109,10 +96,6 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 .login-input:focus{border-color:var(--blue)}
 .btn-login{width:100%;padding:14px;border-radius:var(--r);background:var(--blue);color:#fff;font-family:var(--fd);font-size:18px;letter-spacing:1px;border:none;cursor:pointer;margin-bottom:12px;transition:background .15s}
 .btn-login:active{background:var(--blue-dark)}
-.login-divider{display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--muted);font-size:12px}
-.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border)}
-.btn-google{width:100%;padding:12px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--fb);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:border-color .15s}
-.btn-google:hover{border-color:var(--blue)}
 .login-error{color:var(--red);font-size:12px;text-align:center;margin-top:8px;min-height:18px}
 .login-info{color:var(--muted);font-size:11px;text-align:center;margin-top:12px;line-height:1.6}
 .user-bar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border-radius:999px;font-size:12px;color:var(--muted);cursor:pointer;border:1px solid var(--border)}
@@ -321,8 +304,10 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
         📋 Vous aurez accès en mode <strong>Supporter</strong>.<br>Un coach peut modifier votre rôle ensuite.
       </div>
     </div>
-    <div class="login-divider">ou</div>
-    <button class="btn-google" onclick="handleGoogleAuth()">
+    <div style="display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--muted);font-size:12px">
+      <span style="flex:1;height:1px;background:var(--border);display:block"></span>ou<span style="flex:1;height:1px;background:var(--border);display:block"></span>
+    </div>
+    <button onclick="handleGoogleAuth()" style="width:100%;padding:12px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--fb);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px">
       <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
       Continuer avec Google
     </button>
@@ -705,6 +690,22 @@ const NOLAN_DATA = [
 ];
 
 
+
+async function handleGoogleAuth() {
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  try {
+    if (!window.auth || !window.googleProvider) {
+      await new Promise(r => { window.addEventListener('firebaseReady', r, {once:true}); setTimeout(r,4000); });
+    }
+    await window.fsGoogleSignIn(window.auth, window.googleProvider);
+  } catch(e) {
+    errEl.style.color = 'var(--red)';
+    if (e.code === 'auth/popup-closed-by-user') return;
+    errEl.textContent = 'Erreur Google : ' + (e.code || e.message);
+  }
+}
+
 // ── AUTHENTIFICATION ─────────────────────────────────────────────────────────
 let currentUser = null;
 
@@ -767,22 +768,7 @@ async function handleEmailAuth() {
   }
 }
 
-async function handleGoogleAuth() {
-  const errEl = document.getElementById('login-error');
-  errEl.textContent = '';
-  errEl.style.color = 'var(--amber)';
-  errEl.textContent = 'Redirection vers Google...';
-  try {
-    if (!window.auth || !window.googleProvider) {
-      await new Promise(r => { window.addEventListener('firebaseReady', r, {once:true}); setTimeout(r,4000); });
-    }
-    await window.fsGoogleSignIn(window.auth, window.googleProvider);
-    // La page va se recharger automatiquement après la redirection
-  } catch(e) {
-    errEl.style.color = 'var(--red)';
-    errEl.textContent = 'Erreur : ' + (e.code || e.message);
-  }
-}
+
 
 async function handleSignOut() {
   if (!confirm("Se déconnecter ?")) return;
