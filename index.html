@@ -7,519 +7,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:;">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Natation">
 <link rel="manifest" id="pwa-manifest">
 <title>Natation</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-
-<style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{
-  --blue:#0057FF;--blue-dark:#003AB0;
-  --dark:#0A0E1A;--card:#141826;--surface:#1C2235;
-  --text:#F0F2FF;--muted:#6B7394;--border:#252D45;
-  --green:#00D97E;--amber:#FFB800;--red:#FF4D6A;
-  --fd:'Bebas Neue',sans-serif;--fb:'DM Sans',sans-serif;
-  --r:14px;--rr:20px;
-}
-html,body{height:100%;background:var(--dark);color:var(--text);font-family:var(--fb);overflow:hidden}
-.app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative}
-.screen{flex:1;overflow-y:auto;padding:0 0 120px;display:none}
-.screen.active{display:block}
-
-/* NAV BAS */
-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--card);border-top:1px solid var(--border);display:flex;z-index:100;padding:4px 0 0}
-.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border:none;background:none;color:var(--muted);font-family:var(--fb);font-size:9px;font-weight:500;cursor:pointer;transition:color .2s}
-.nav-btn.active{color:var(--blue)}
-.nav-icon{font-size:18px;line-height:1}
-
-/* HEADER */
-.page-header{padding:10px 16px 8px;position:sticky;top:0;background:var(--dark);z-index:10;border-bottom:1px solid var(--border)}
-
-
-/* LOGIN */
-#login-screen{position:fixed;inset:0;background:var(--dark);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-.login-logo{width:90px;height:90px;border-radius:20px;margin-bottom:20px}
-.login-title{font-family:var(--fd);font-size:34px;letter-spacing:2px;color:var(--text);margin-bottom:4px}
-.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px}
-.login-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--border);border-radius:var(--rr);padding:24px}
-.login-tabs{display:flex;margin-bottom:20px;background:var(--surface);border-radius:10px;padding:3px}
-.login-tab{flex:1;padding:8px;border:none;background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;transition:all .15s}
-.login-tab.active{background:var(--blue);color:#fff}
-.login-field{margin-bottom:14px}
-.login-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-family:var(--fb);font-size:14px;outline:none;transition:border-color .2s}
-.login-input:focus{border-color:var(--blue)}
-.btn-login{width:100%;padding:14px;border-radius:var(--r);background:var(--blue);color:#fff;font-family:var(--fd);font-size:18px;letter-spacing:1px;border:none;cursor:pointer;margin-bottom:12px;transition:background .15s}
-.btn-login:active{background:var(--blue-dark)}
-.login-error{color:var(--red);font-size:12px;text-align:center;margin-top:8px;min-height:18px}
-.login-info{color:var(--muted);font-size:11px;text-align:center;margin-top:12px;line-height:1.6}
-.user-bar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border-radius:999px;font-size:12px;color:var(--muted);cursor:pointer;border:1px solid var(--border)}
-.user-bar-email{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-size:11px}
-
-/* SWIMMER SELECTOR */
-.swimmer-bar{display:flex;align-items:center;gap:8px;margin-bottom:4px}
-.swimmer-btn{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px 12px 5px 6px;cursor:pointer;flex:1;min-width:0}
-.swimmer-avatar{width:26px;height:26px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:13px;color:#fff;flex-shrink:0}
-.swimmer-name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.swimmer-arrow{margin-left:auto;color:var(--muted);font-size:12px;transition:opacity .2s}
-.header-sub{font-size:11px;color:var(--muted)}
-
-/* SWIMMER MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:flex-end;justify-content:center}
-.modal-overlay.open{display:flex}
-.modal-sheet{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:16px;max-height:80vh;overflow-y:auto}
-.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px}
-.modal-title{font-family:var(--fd);font-size:20px;margin-bottom:12px}
-.swimmer-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
-.swimmer-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border);cursor:pointer;transition:border-color .15s}
-.swimmer-row.active-sw{border-color:var(--blue)}
-.sw-avatar-lg{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:16px;color:#fff;flex-shrink:0}
-.sw-info{flex:1;min-width:0}
-.sw-info-name{font-weight:600;font-size:14px}
-.sw-info-count{font-size:11px;color:var(--muted)}
-.sw-del{background:none;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:4px 8px}
-.sw-check{color:var(--blue);font-size:16px;margin-left:4px}
-.add-swimmer-form{display:flex;gap:8px;margin-bottom:12px}
-.add-swimmer-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:var(--fb);font-size:14px;outline:none}
-.add-swimmer-input:focus{border-color:var(--blue)}
-.btn-add-sw{background:var(--blue);border:none;border-radius:10px;padding:10px 16px;color:#fff;font-family:var(--fd);font-size:16px;cursor:pointer;white-space:nowrap}
-.btn-close-modal{width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-family:var(--fb);font-size:14px;cursor:pointer}
-
-/* CHIPS */
-.filter-row{display:flex;align-items:center;gap:8px;padding:5px 16px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
-.filter-row::-webkit-scrollbar{display:none}
-.filter-row-label{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;width:44px;flex-shrink:0}
-.filters{display:flex;gap:8px;overflow-x:auto;padding:8px 16px;scrollbar-width:none}
-.filters::-webkit-scrollbar{display:none}
-.filter-group{display:flex;gap:6px;flex-shrink:0}
-.chip{padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
-.chip.active{background:var(--blue);border-color:var(--blue);color:#fff}
-.sep{width:1px;background:var(--border);flex-shrink:0;margin:3px 0}
-
-/* RÉSULTATS */
-.results-list{padding:0 16px;display:flex;flex-direction:column;gap:8px}
-.result-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px}
-.rc-badge{width:44px;height:44px;border-radius:10px;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
-.rc-dist{font-family:var(--fd);font-size:16px;color:var(--blue);line-height:1}
-.rc-unit{font-size:8px;color:var(--muted);text-transform:uppercase}
-.rc-body{flex:1;min-width:0}
-.rc-top{display:flex;align-items:center;gap:6px;margin-bottom:2px}
-.rc-nage{font-weight:600;font-size:13px}
-.rc-niveau{font-size:10px;padding:1px 6px;border-radius:4px}
-.rc-niveau.dep{color:#60A5FA;background:#1e3a5f}
-.rc-niveau.reg{color:var(--green);background:#0d3324}
-.rc-niveau.nat{color:var(--amber);background:#3a2a00}
-.rc-bottom{display:flex;gap:10px;font-size:11px;color:var(--muted)}
-.rc-right{text-align:right;flex-shrink:0}
-.rc-temps{font-family:var(--fd);font-size:20px;color:var(--text);letter-spacing:.5px}
-.rc-pts{font-size:11px}
-.no-results{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
-
-/* SAISIE */
-.form-wrap{padding:0 16px}
-.form-field{margin-bottom:14px}
-.form-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;display:block}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.form-input,.form-select{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:var(--fb);font-size:14px;outline:none;transition:border-color .2s;-webkit-appearance:none}
-.form-input:focus,.form-select:focus{border-color:var(--blue)}
-.form-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7394' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
-.form-select option{background:var(--card)}
-.chip-grid{display:flex;flex-wrap:wrap;gap:6px}
-.chip-sel{padding:7px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:12px;cursor:pointer;transition:all .15s}
-.chip-sel.active{background:var(--blue);border-color:var(--blue);color:#fff}
-.btn-submit{width:100%;padding:14px;border-radius:var(--r);background:var(--blue);color:#fff;font-family:var(--fd);font-size:18px;letter-spacing:1px;border:none;cursor:pointer;margin-top:4px}
-.btn-submit:active{background:var(--blue-dark)}
-
-/* IMPORT/EXPORT */
-.io-section{padding:0 16px;margin-bottom:16px}
-.io-title{font-family:var(--fd);font-size:16px;color:var(--muted);letter-spacing:.5px;margin-bottom:10px}
-.io-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.btn-io{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;font-family:var(--fb);color:var(--text);font-size:12px;font-weight:500}
-.btn-io span:first-child{font-size:24px}
-.btn-io.export{border-color:#1D9E75;color:#1D9E75}
-.btn-io.import{border-color:var(--amber);color:var(--amber)}
-.btn-io.export-all{border-color:#60A5FA;color:#60A5FA}
-
-/* GRAPHIQUE */
-.graph-wrap{padding:0 16px}
-.graph-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rr);padding:14px;margin-bottom:14px}
-.graph-title{font-family:var(--fd);font-size:14px;letter-spacing:.5px;color:var(--muted);margin-bottom:10px}
-.chart-container{position:relative;height:260px;width:100%}
-.legend-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
-.legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
-.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px}
-.stat-label{font-size:10px;color:var(--muted);margin-bottom:3px}
-.stat-val{font-family:var(--fd);font-size:22px;color:var(--text)}
-.stat-sub{font-size:10px;color:var(--muted)}
-
-
-
-
-/* RECORDS */
-.nage-selector{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
-.nage-badge{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:var(--fd);font-size:15px;letter-spacing:1px;cursor:pointer;transition:all .15s;min-width:52px;text-align:center}
-.nage-badge.active{background:var(--blue);border-color:var(--blue);color:#fff}
-.records-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.record-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 8px;text-align:center}
-.record-box-dist{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.record-box-time{font-family:var(--fd);font-size:20px;color:var(--text);letter-spacing:.5px;line-height:1.1}
-.record-box-pts{font-size:10px;color:var(--amber);margin-top:2px}
-.record-box-meet{font-size:9px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.record-box.empty .record-box-time{font-size:14px;color:var(--muted)}
-
-
-/* MODAL DÉTAIL PERFORMANCE */
-.detail-header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
-.detail-badge{width:56px;height:56px;border-radius:12px;background:var(--blue);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
-.detail-badge-dist{font-family:var(--fd);font-size:22px;color:#fff;line-height:1}
-.detail-badge-unit{font-size:9px;color:rgba(255,255,255,.7);text-transform:uppercase}
-.detail-temps-big{font-family:var(--fd);font-size:42px;color:var(--text);letter-spacing:1px;line-height:1;margin-bottom:4px}
-.detail-nage{font-size:14px;color:var(--muted);font-weight:500}
-.detail-fields{display:flex;flex-direction:column;gap:0}
-.detail-field{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)}
-.detail-field:last-child{border-bottom:none}
-.detail-field-icon{width:28px;font-size:16px;flex-shrink:0}
-.detail-field-label{font-size:11px;color:var(--muted);width:90px;flex-shrink:0}
-.detail-field-val{flex:1;font-size:14px;font-weight:500;color:var(--text)}
-.detail-pts-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-family:var(--fd);font-size:16px;letter-spacing:.5px}
-.detail-lien{color:var(--blue);font-size:12px;text-decoration:none;word-break:break-all}
-.detail-actions{display:flex;gap:8px;margin-top:18px}
-.btn-detail-edit{flex:1;padding:12px;border-radius:var(--r);background:var(--blue);color:#fff;font-family:var(--fd);font-size:16px;letter-spacing:.5px;border:none;cursor:pointer}
-.btn-detail-close{flex:1;padding:12px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--fd);font-size:16px;letter-spacing:.5px;cursor:pointer}
-
-/* ÉDITION RÉSULTAT */
-.rc-edit-btn{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px 6px;margin-left:4px;border-radius:6px;transition:color .15s}
-.rc-edit-btn:active{color:var(--blue)}
-
-
-/* PROFIL UNIFIÉ */
-.user-account-avatar-big{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:34px;color:#fff;margin:0 auto}
-.coach-user-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:8px}
-.coach-user-top{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.coach-user-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:16px;color:#fff;flex-shrink:0}
-.coach-user-email{font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.coach-user-meta{font-size:11px;color:var(--muted);margin-top:2px}
-.coach-role-btns{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
-.coach-role-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--fb)}
-.coach-role-btn.active-nageur{background:#1e3a5f;border-color:#60A5FA;color:#60A5FA}
-.coach-role-btn.active-supporter{background:#1a3320;border-color:#4ade80;color:#4ade80}
-.coach-role-btn.active-coach{background:#3a2000;border-color:var(--amber);color:var(--amber)}
-.coach-swimmer-sel{width:100%;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);font-family:var(--fb);font-size:12px;margin-top:4px}
-
-/* PROFIL NAGEUR */
-.profile-wrap{padding:0 16px}
-.profile-avatar-zone{display:flex;flex-direction:column;align-items:center;padding:20px 0 16px;gap:10px}
-.profile-avatar-big{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:40px;color:#fff}
-.profile-name-display{font-family:var(--fd);font-size:28px;letter-spacing:1px}
-.profile-subtitle{font-size:12px;color:var(--muted)}
-.profile-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rr);padding:16px;margin-bottom:14px}
-.profile-card-title{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
-.profile-field{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
-.profile-field:last-child{border-bottom:none}
-.profile-field-label{font-size:12px;color:var(--muted);width:110px;flex-shrink:0}
-.profile-field-val{flex:1;font-size:14px;color:var(--text);font-weight:500}
-.profile-field-val.empty{color:var(--muted);font-weight:400;font-style:italic}
-.btn-edit-profile{width:100%;padding:13px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--fd);font-size:17px;letter-spacing:1px;cursor:pointer;margin-bottom:10px}
-.btn-danger{width:100%;padding:13px;border-radius:var(--r);background:none;border:1px solid var(--red);color:var(--red);font-family:var(--fd);font-size:17px;letter-spacing:1px;cursor:pointer}
-.stat-row{display:flex;justify-content:space-around;padding:8px 0}
-.stat-item{text-align:center}
-.stat-item-val{font-family:var(--fd);font-size:26px;color:var(--text)}
-.stat-item-label{font-size:10px;color:var(--muted)}
-.color-picker-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.color-dot{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:border-color .15s}
-.color-dot.selected{border-color:var(--text)}
-
-/* TOAST */
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--green);color:#fff;padding:10px 22px;border-radius:999px;font-weight:600;font-size:13px;z-index:999;transition:transform .3s;white-space:nowrap}
-.toast.show{transform:translateX(-50%) translateY(0)}
-</style>
-</head>
-
-<body>
-<!-- ÉCRAN LOGIN -->
-<div id="login-screen">
-  <img class="login-logo" id="login-logo" src="" alt="Natation">
-  <div class="login-title">NATATION</div>
-  <div class="login-sub">Suivi des performances</div>
-  <div class="login-card">
-    <div class="login-tabs">
-      <button class="login-tab active" onclick="switchLoginTab('signin')">Se connecter</button>
-      <button class="login-tab" onclick="switchLoginTab('signup')">S'inscrire</button>
-    </div>
-    <div class="login-field">
-      <input class="login-input" id="login-email" type="email" placeholder="Email" autocomplete="email">
-    </div>
-    <div class="login-field">
-      <input class="login-input" id="login-password" type="password" placeholder="Mot de passe" autocomplete="current-password">
-    </div>
-    <button class="btn-login" id="btn-login-action" onclick="handleEmailAuth()">SE CONNECTER</button>
-    <div id="login-info-signup" style="display:none">
-      <div class="login-info" style="margin-bottom:8px">
-        Vous aurez accès en mode Supporter. Un coach peut modifier votre rôle ensuite.
-      </div>
-    </div>
-    <div class="login-error" id="login-error"></div>
-  </div>
-</div>
-
-<!-- APP -->
-<div class="app">
-
-<!-- ÉCRAN RÉSULTATS -->
-<div class="screen active" id="screen-results">
-  <div class="page-header">
-    <div class="swimmer-bar">
-      <button class="swimmer-btn" onclick="openModalIfCoach()">
-        <div class="swimmer-avatar" id="sw-avatar-results">H</div>
-        <span class="swimmer-name" id="sw-name-results">Hugo</span>
-        <span class="swimmer-arrow">▼</span>
-      </button>
-      <span id="sync-status" title="Synchronisation" style="font-size:16px;cursor:default;margin-left:4px">☁️</span>
-      <button class="user-bar" onclick="handleSignOut()" title="Se déconnecter">
-        <span>👤</span>
-        <span class="user-bar-email" id="user-bar-email">—</span>
-        <span style="color:var(--muted);font-size:10px">⏏</span>
-      </button>
-    </div>
-    <div class="header-sub" id="results-count">0 résultats</div>
-  </div>
-  <div style="border-bottom:1px solid var(--border)">
-    <div class="filter-row">
-      <div class="filter-row-label">Nage</div>
-      <div class="filter-group" id="fg-nage"></div>
-    </div>
-    <div class="filter-row">
-      <div class="filter-row-label">Distance</div>
-      <div class="filter-group" id="fg-dist"></div>
-    </div>
-    <div class="filter-row" style="border-bottom:none">
-      <div class="filter-row-label">Filtres</div>
-      <div class="filter-group" id="fg-bassin"></div>
-      <div class="sep" style="height:20px;margin:0 2px"></div>
-      <div class="filter-group" id="fg-niveau"></div>
-    </div>
-  </div>
-  <div class="results-list" id="results-list"></div>
-</div>
-
-<!-- ÉCRAN SAISIE -->
-<div class="screen" id="screen-add">
-  <div class="page-header">
-    <div class="swimmer-bar">
-      <button class="swimmer-btn" onclick="openModalIfCoach()">
-        <div class="swimmer-avatar" id="sw-avatar-add">H</div>
-        <span class="swimmer-name" id="sw-name-add">Hugo</span>
-        <span class="swimmer-arrow">▼</span>
-      </button>
-    </div>
-    <div class="header-sub">Nouvelle performance</div>
-  </div>
-  <div class="form-wrap">
-    <div class="form-field">
-      <label class="form-label">Distance</label>
-      <div class="chip-grid" id="form-dist">
-        <button class="chip-sel" data-val="50">50 m</button>
-        <button class="chip-sel" data-val="100">100 m</button>
-        <button class="chip-sel" data-val="200">200 m</button>
-        <button class="chip-sel" data-val="400">400 m</button>
-      </div>
-    </div>
-    <div class="form-field">
-      <label class="form-label">Nage</label>
-      <div class="chip-grid" id="form-nage">
-        <button class="chip-sel" data-val="NL">NL</button>
-        <button class="chip-sel" data-val="Dos">Dos</button>
-        <button class="chip-sel" data-val="Bra.">Bra.</button>
-        <button class="chip-sel" data-val="Pap.">Pap.</button>
-        <button class="chip-sel" data-val="4 N.">4 N.</button>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label class="form-label">Temps (m:ss.cc)</label>
-        <input class="form-input" id="form-temps" placeholder="1:04.83" type="text" inputmode="decimal">
-      </div>
-      <div class="form-field">
-        <label class="form-label">Points</label>
-        <input class="form-input" id="form-pts" placeholder="788" type="text" inputmode="numeric">
-      </div>
-    </div>
-    <div class="form-field">
-      <label class="form-label">Meeting</label>
-      <input class="form-input" id="form-meeting" placeholder="VERSAILLES" type="text">
-    </div>
-    <div class="form-field">
-      <label class="form-label">Date</label>
-      <input class="form-input" id="form-date" type="date">
-    </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label class="form-label">Niveau</label>
-        <select class="form-select" id="form-niveau">
-          <option value="[DEP]">Départemental</option>
-          <option value="[REG]">Régional</option>
-          <option value="[NAT]">National</option>
-        </select>
-      </div>
-      <div class="form-field">
-        <label class="form-label">Bassin</label>
-        <select class="form-select" id="form-bassin">
-          <option value="25 mètres">25 m</option>
-          <option value="50 mètres">50 m</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-field">
-        <label class="form-label">Âge</label>
-        <input class="form-input" id="form-age" placeholder="(14 ans)" type="text">
-      </div>
-      <div class="form-field">
-        <label class="form-label">Club</label>
-        <input class="form-input" id="form-club" placeholder="CN PLAISIR" type="text">
-      </div>
-    </div>
-    <div class="form-field">
-      <label class="form-label">Lien résultats (optionnel)</label>
-      <input class="form-input" id="form-lien" placeholder="https://ffn.extranat.fr/..." type="url">
-    </div>
-    <button class="btn-submit" id="btn-submit">ENREGISTRER</button>
-    <div style="height:20px"></div>
-    <div class="io-title" style="margin-top:8px">DONNÉES</div>
-    <div class="io-row" style="margin-bottom:10px">
-      <button class="btn-io export" onclick="exportCSV(false)"><span>⬇️</span>Exporter nageur</button>
-      <button class="btn-io export-all" onclick="exportCSV(true)"><span>⬇️</span>Exporter tous</button>
-    </div>
-    <div class="io-row">
-      <button class="btn-io import" onclick="document.getElementById('csv-import').click()"><span>⬆️</span>Importer CSV</button>
-      <div></div>
-    </div>
-    <input type="file" id="csv-import" accept=".csv" style="display:none" onchange="importCSV(event)">
-  </div>
-</div>
-
-<!-- ÉCRAN COURBES -->
-<div class="screen" id="screen-chart">
-  <div class="page-header">
-    <div class="swimmer-bar">
-      <button class="swimmer-btn" onclick="openModalIfCoach()">
-        <div class="swimmer-avatar" id="sw-avatar-chart">H</div>
-        <span class="swimmer-name" id="sw-name-chart">Hugo</span>
-        <span class="swimmer-arrow">▼</span>
-      </button>
-    </div>
-    <div class="header-sub">Progression des chronos</div>
-  </div>
-  <div class="graph-wrap">
-    <div style="border-bottom:1px solid var(--border);margin-bottom:12px">
-      <div class="filter-row">
-        <div class="filter-row-label">Nage</div>
-        <div class="filter-group" id="gg-nage"></div>
-      </div>
-      <div class="filter-row" style="border-bottom:none">
-        <div class="filter-row-label">Distance</div>
-        <div class="filter-group" id="gg-dist"></div>
-      </div>
-    </div>
-    <div class="stats-grid" id="stats-grid"></div>
-    <div class="graph-card">
-      <div class="graph-title" id="graph-title">CHRONOS PAR DATE</div>
-      <div class="chart-container"><canvas id="myChart" role="img" aria-label="Courbes des chronos"></canvas></div>
-      <div class="legend-wrap" id="chart-legend"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ÉCRAN PROFIL -->
-<div class="screen" id="screen-profile">
-  <div class="page-header">
-    <div class="swimmer-bar">
-      <button class="swimmer-btn" onclick="openModalIfCoach()">
-        <div class="swimmer-avatar" id="sw-avatar-profile">H</div>
-        <span class="swimmer-name" id="sw-name-profile">Hugo</span>
-        <span class="swimmer-arrow">▼</span>
-      </button>
-    </div>
-    <div class="header-sub" id="profile-header-sub">Mon profil</div>
-  </div>
-  <div class="profile-wrap">
-    <div id="user-account-section">
-      <div class="profile-avatar-zone">
-        <div class="profile-avatar-big" id="user-account-avatar">?</div>
-        <div class="profile-name-display" id="user-account-name">—</div>
-        <div style="margin-top:4px" id="user-account-role-badge"></div>
-      </div>
-      <div class="profile-card">
-        <div class="profile-card-title">Mon compte</div>
-        <div class="profile-field">
-          <span class="profile-field-label">Email</span>
-          <span class="profile-field-val" id="user-account-email">—</span>
-        </div>
-        <div class="profile-field">
-          <span class="profile-field-label">Rôle</span>
-          <span class="profile-field-val" id="user-account-role-text">—</span>
-        </div>
-        <div class="profile-field" id="user-account-swimmer-row" style="display:none">
-          <span class="profile-field-label">Profil nageur</span>
-          <span class="profile-field-val" id="user-account-swimmer">—</span>
-        </div>
-      </div>
-    </div>
-    <div id="supporter-fav-section" style="display:none">
-      <div class="profile-card">
-        <div class="profile-card-title">Nageur favori</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Affiché par défaut à la connexion</div>
-        <select class="form-select" id="supporter-fav-select" onchange="saveFavoriteSwimmer(this.value)">
-          <option value="">-- Choisir un nageur --</option>
-        </select>
-      </div>
-    </div>
-    <div id="swimmer-profile-section" style="display:none">
-      <div class="profile-card">
-        <div class="profile-card-title">Records personnels</div>
-        <div class="nage-selector" id="records-nage-selector"></div>
-        <div class="records-grid" id="records-grid"></div>
-      </div>
-      <div class="profile-card">
-        <div class="profile-card-title">Statistiques</div>
-        <div class="stat-row" id="profile-stats"></div>
-      </div>
-      <div class="profile-card">
-        <div class="profile-card-title">Informations</div>
-        <div class="profile-field"><span class="profile-field-label">Nom complet</span><span class="profile-field-val" id="pf-nom">—</span></div>
-        <div class="profile-field"><span class="profile-field-label">Date de naissance</span><span class="profile-field-val" id="pf-naissance">—</span></div>
-        <div class="profile-field"><span class="profile-field-label">Club</span><span class="profile-field-val" id="pf-club">—</span></div>
-        <div class="profile-field"><span class="profile-field-label">Licence FFN</span><span class="profile-field-val" id="pf-licence">—</span></div>
-        <div class="profile-field"><span class="profile-field-label">Groupe</span><span class="profile-field-val" id="pf-groupe">—</span></div>
-        <div class="profile-field"><span class="profile-field-label">Entraîneur</span><span class="profile-field-val" id="pf-entraineur">—</span></div>
-      </div>
-      <button class="btn-edit-profile" onclick="openEditProfile()">✏️ MODIFIER MA FICHE</button>
-    </div>
-    <div id="coach-admin-section" style="display:none">
-      <div class="profile-card">
-        <div class="profile-card-title">Utilisateurs</div>
-        <div id="coach-users-list"></div>
-      </div>
-    </div>
-    <div style="height:8px"></div>
-    <button class="btn-danger" onclick="handleSignOut()" style="margin-bottom:8px">⏏ SE DÉCONNECTER</button>
-    <div style="height:16px"></div>
-  </div>
-</div>
-
-<!-- NAV -->
-<nav>
-  <button class="nav-btn active" data-screen="results"><span class="nav-icon">🏊</span>Résultats</button>
-  <button class="nav-btn" data-screen="add"><span class="nav-icon">➕</span>Saisie</button>
-  <button class="nav-btn" data-screen="chart"><span class="nav-icon">📈</span>Courbes</button>
-  <button class="nav-btn" data-screen="profile"><span class="nav-icon">👤</span>Profil</button>
-</nav>
-</div>
-
-
 <script type="module">
 // ── FIREBASE INIT ─────────────────────────────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -807,22 +298,210 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
     </div>
     <button class="btn-login" id="btn-login-action" onclick="handleEmailAuth()">SE CONNECTER</button>
     <div id="login-info-signup" style="display:none">
-      <div class="login-info" style="margin-bottom:8px">
-        📋 Vous aurez accès en mode <strong>Supporter</strong>.<br>Un coach peut modifier votre rôle ensuite.
-      </div>
+      <div class="login-info" style="margin-bottom:8px">Vous aurez accès en mode Supporter. Un coach peut modifier votre rôle ensuite.</div>
     </div>
-    <div style="display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--muted);font-size:12px">
-      <span style="flex:1;height:1px;background:var(--border);display:block"></span>ou<span style="flex:1;height:1px;background:var(--border);display:block"></span>
-    </div>
-    <button onclick="handleGoogleAuth()" style="width:100%;padding:12px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--fb);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px">
-      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
-      Continuer avec Google
-    </button>
     <div class="login-error" id="login-error"></div>
   </div>
 </div>
 
-<!-- MODAL ÉDITION RÉSULTAT -->
+<!-- APP -->
+<div class="app">
+
+<div class="screen active" id="screen-results">
+  <div class="page-header">
+    <div class="swimmer-bar">
+      <button class="swimmer-btn" onclick="openModalIfCoach()">
+        <div class="swimmer-avatar" id="sw-avatar-results">H</div>
+        <span class="swimmer-name" id="sw-name-results">Hugo</span>
+        <span class="swimmer-arrow">▼</span>
+      </button>
+      <span id="sync-status" style="font-size:16px;margin-left:4px">☁️</span>
+      <button class="user-bar" onclick="handleSignOut()">
+        <span>👤</span><span class="user-bar-email" id="user-bar-email">—</span><span style="font-size:10px">⏏</span>
+      </button>
+    </div>
+    <div class="header-sub" id="results-count">0 résultats</div>
+  </div>
+  <div style="border-bottom:1px solid var(--border)">
+    <div class="filter-row"><div class="filter-row-label">Nage</div><div class="filter-group" id="fg-nage"></div></div>
+    <div class="filter-row"><div class="filter-row-label">Distance</div><div class="filter-group" id="fg-dist"></div></div>
+    <div class="filter-row" style="border-bottom:none">
+      <div class="filter-row-label">Filtres</div>
+      <div class="filter-group" id="fg-bassin"></div>
+      <div class="sep" style="height:20px;margin:0 4px"></div>
+      <div class="filter-group" id="fg-niveau"></div>
+    </div>
+  </div>
+  <div class="results-list" id="results-list"></div>
+</div>
+
+<div class="screen" id="screen-add">
+  <div class="page-header">
+    <div class="swimmer-bar">
+      <button class="swimmer-btn" onclick="openModalIfCoach()">
+        <div class="swimmer-avatar" id="sw-avatar-add">H</div>
+        <span class="swimmer-name" id="sw-name-add">Hugo</span>
+        <span class="swimmer-arrow">▼</span>
+      </button>
+    </div>
+    <div class="header-sub">Nouvelle performance</div>
+  </div>
+  <div class="form-wrap">
+    <div class="form-field"><label class="form-label">Distance</label>
+      <div class="chip-grid" id="form-dist">
+        <button class="chip-sel" data-val="50">50 m</button>
+        <button class="chip-sel" data-val="100">100 m</button>
+        <button class="chip-sel" data-val="200">200 m</button>
+        <button class="chip-sel" data-val="400">400 m</button>
+      </div>
+    </div>
+    <div class="form-field"><label class="form-label">Nage</label>
+      <div class="chip-grid" id="form-nage">
+        <button class="chip-sel" data-val="NL">NL</button>
+        <button class="chip-sel" data-val="Dos">Dos</button>
+        <button class="chip-sel" data-val="Bra.">Bra.</button>
+        <button class="chip-sel" data-val="Pap.">Pap.</button>
+        <button class="chip-sel" data-val="4 N.">4 N.</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label class="form-label">Temps</label><input class="form-input" id="form-temps" placeholder="1:04.83" type="text" inputmode="decimal"></div>
+      <div class="form-field"><label class="form-label">Points</label><input class="form-input" id="form-pts" placeholder="788" type="text" inputmode="numeric"></div>
+    </div>
+    <div class="form-field"><label class="form-label">Meeting</label><input class="form-input" id="form-meeting" placeholder="VERSAILLES" type="text"></div>
+    <div class="form-field"><label class="form-label">Date</label><input class="form-input" id="form-date" type="date"></div>
+    <div class="form-row">
+      <div class="form-field"><label class="form-label">Niveau</label>
+        <select class="form-select" id="form-niveau">
+          <option value="[DEP]">Départemental</option>
+          <option value="[REG]">Régional</option>
+          <option value="[NAT]">National</option>
+        </select>
+      </div>
+      <div class="form-field"><label class="form-label">Bassin</label>
+        <select class="form-select" id="form-bassin">
+          <option value="25 mètres">25 m</option>
+          <option value="50 mètres">50 m</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label class="form-label">Âge</label><input class="form-input" id="form-age" placeholder="(14 ans)" type="text"></div>
+      <div class="form-field"><label class="form-label">Club</label><input class="form-input" id="form-club" placeholder="CN PLAISIR" type="text"></div>
+    </div>
+    <div class="form-field"><label class="form-label">Lien résultats</label><input class="form-input" id="form-lien" type="url"></div>
+    <button class="btn-submit" id="btn-submit">ENREGISTRER</button>
+    <div style="height:16px"></div>
+    <div class="io-row">
+      <button class="btn-io export" onclick="exportCSV(false)"><span>⬇️</span>Exporter nageur</button>
+      <button class="btn-io export-all" onclick="exportCSV(true)"><span>⬇️</span>Exporter tous</button>
+    </div>
+    <div class="io-row" style="margin-top:8px">
+      <button class="btn-io import" onclick="document.getElementById('csv-import').click()"><span>⬆️</span>Importer CSV</button>
+      <div></div>
+    </div>
+    <input type="file" id="csv-import" accept=".csv" style="display:none" onchange="importCSV(event)">
+  </div>
+</div>
+
+<div class="screen" id="screen-chart">
+  <div class="page-header">
+    <div class="swimmer-bar">
+      <button class="swimmer-btn" onclick="openModalIfCoach()">
+        <div class="swimmer-avatar" id="sw-avatar-chart">H</div>
+        <span class="swimmer-name" id="sw-name-chart">Hugo</span>
+        <span class="swimmer-arrow">▼</span>
+      </button>
+    </div>
+    <div class="header-sub">Progression des chronos</div>
+  </div>
+  <div class="graph-wrap">
+    <div style="border-bottom:1px solid var(--border);margin-bottom:12px">
+      <div class="filter-row"><div class="filter-row-label">Nage</div><div class="filter-group" id="gg-nage"></div></div>
+      <div class="filter-row" style="border-bottom:none"><div class="filter-row-label">Distance</div><div class="filter-group" id="gg-dist"></div></div>
+    </div>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="graph-card">
+      <div class="graph-title" id="graph-title">CHRONOS PAR DATE</div>
+      <div class="chart-container"><canvas id="myChart" role="img" aria-label="Courbes des chronos"></canvas></div>
+      <div class="legend-wrap" id="chart-legend"></div>
+    </div>
+  </div>
+</div>
+
+<div class="screen" id="screen-profile">
+  <div class="page-header">
+    <div class="swimmer-bar">
+      <button class="swimmer-btn" onclick="openModalIfCoach()">
+        <div class="swimmer-avatar" id="sw-avatar-profile">H</div>
+        <span class="swimmer-name" id="sw-name-profile">Hugo</span>
+        <span class="swimmer-arrow">▼</span>
+      </button>
+    </div>
+    <div class="header-sub">Mon profil</div>
+  </div>
+  <div class="profile-wrap">
+    <div id="user-account-section">
+      <div class="profile-avatar-zone">
+        <div class="profile-avatar-big" id="user-account-avatar">?</div>
+        <div class="profile-name-display" id="user-account-name">—</div>
+        <div style="margin-top:4px" id="user-account-role-badge"></div>
+      </div>
+      <div class="profile-card">
+        <div class="profile-card-title">Mon compte</div>
+        <div class="profile-field"><span class="profile-field-label">Email</span><span class="profile-field-val" id="user-account-email">—</span></div>
+        <div class="profile-field"><span class="profile-field-label">Rôle</span><span class="profile-field-val" id="user-account-role-text">—</span></div>
+        <div class="profile-field" id="user-account-swimmer-row" style="display:none"><span class="profile-field-label">Nageur</span><span class="profile-field-val" id="user-account-swimmer">—</span></div>
+      </div>
+    </div>
+    <div id="supporter-fav-section" style="display:none">
+      <div class="profile-card">
+        <div class="profile-card-title">Nageur favori</div>
+        <select class="form-select" id="supporter-fav-select" onchange="saveFavoriteSwimmer(this.value)"><option value="">-- Choisir --</option></select>
+      </div>
+    </div>
+    <div id="swimmer-profile-section" style="display:none">
+      <div class="profile-card">
+        <div class="profile-card-title">Records</div>
+        <div class="nage-selector" id="records-nage-selector"></div>
+        <div class="records-grid" id="records-grid"></div>
+      </div>
+      <div class="profile-card">
+        <div class="profile-card-title">Statistiques</div>
+        <div class="stat-row" id="profile-stats"></div>
+      </div>
+      <div class="profile-card">
+        <div class="profile-card-title">Informations</div>
+        <div class="profile-field"><span class="profile-field-label">Nom</span><span class="profile-field-val" id="pf-nom">—</span></div>
+        <div class="profile-field"><span class="profile-field-label">Naissance</span><span class="profile-field-val" id="pf-naissance">—</span></div>
+        <div class="profile-field"><span class="profile-field-label">Club</span><span class="profile-field-val" id="pf-club">—</span></div>
+        <div class="profile-field"><span class="profile-field-label">Licence</span><span class="profile-field-val" id="pf-licence">—</span></div>
+        <div class="profile-field"><span class="profile-field-label">Groupe</span><span class="profile-field-val" id="pf-groupe">—</span></div>
+        <div class="profile-field"><span class="profile-field-label">Entraîneur</span><span class="profile-field-val" id="pf-entraineur">—</span></div>
+      </div>
+      <button class="btn-edit-profile" onclick="openEditProfile()">✏️ MODIFIER</button>
+    </div>
+    <div id="coach-admin-section" style="display:none">
+      <div class="profile-card">
+        <div class="profile-card-title">Utilisateurs</div>
+        <div id="coach-users-list"></div>
+      </div>
+    </div>
+    <div style="height:8px"></div>
+    <button class="btn-danger" onclick="handleSignOut()" style="margin-bottom:16px">⏏ SE DÉCONNECTER</button>
+  </div>
+</div>
+
+<nav>
+  <button class="nav-btn active" data-screen="results"><span class="nav-icon">🏊</span>Résultats</button>
+  <button class="nav-btn" data-screen="add"><span class="nav-icon">➕</span>Saisie</button>
+  <button class="nav-btn" data-screen="chart"><span class="nav-icon">📈</span>Courbes</button>
+  <button class="nav-btn" data-screen="profile"><span class="nav-icon">👤</span>Profil</button>
+</nav>
+</div>
+
+
+<!-- MODALS -->
 <div class="modal-overlay" id="edit-modal" onclick="closeEditModalOutside(event)">
   <div class="modal-sheet" style="max-height:92vh">
     <div class="modal-handle"></div>
@@ -902,7 +581,6 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
   </div>
 </div>
 
-<!-- MODAL DÉTAIL PERFORMANCE -->
 <div class="modal-overlay" id="detail-modal" onclick="closeDetailModalOutside(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -964,16 +642,6 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
     </div>
   </div>
 
-<nav>
-  <button class="nav-btn active" data-screen="results"><span class="nav-icon">🏊</span>Résultats</button>
-  <button class="nav-btn" data-screen="add"><span class="nav-icon">➕</span>Saisie</button>
-  <button class="nav-btn" data-screen="chart"><span class="nav-icon">📈</span>Courbes</button>
-  <button class="nav-btn" data-screen="profile"><span class="nav-icon">👤</span>Profil</button>
-  <button class="nav-btn" id="nav-admin-btn" data-screen="admin" style="display:none"><span class="nav-icon">⚙️</span>Admin</button>
-</nav>
-</div>
-
-<!-- MODAL NAGEURS -->
 <div class="modal-overlay" id="sw-modal" onclick="closeModalOutside(event)">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
@@ -987,8 +655,8 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
 
+<div class="toast" id="toast"></div>
 
 <script>
 
@@ -2552,8 +2220,6 @@ initForm();
 // Cacher l'app au démarrage, montrer login
 document.querySelector('.app').style.display = 'none';
 initAuth();
-
-
 </script>
 </body>
 </html>
