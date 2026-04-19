@@ -17,7 +17,7 @@
 // ── FIREBASE INIT ─────────────────────────────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBlKWmcz162vvSZ-cPVJof_98I3ZyFfyb0",
@@ -53,7 +53,7 @@ window.fsSignIn = signInWithEmailAndPassword;
 window.fsCreateUser = createUserWithEmailAndPassword;
 window.fsSignOut = () => signOut(auth);
 window.fsOnAuthStateChanged = (cb) => onAuthStateChanged(auth, cb);
-window.fsGoogleSignIn = (auth, provider) => signInWithPopup(auth, provider);
+window.fsGoogleSignIn = (auth, provider) => signInWithRedirect(auth, provider);
 window.firebaseReady = true;
 window.dispatchEvent(new Event('firebaseReady'));
 </script>
@@ -698,10 +698,12 @@ async function handleGoogleAuth() {
     if (!window.auth || !window.googleProvider) {
       await new Promise(r => { window.addEventListener('firebaseReady', r, {once:true}); setTimeout(r,4000); });
     }
+    errEl.style.color = 'var(--amber)';
+    errEl.textContent = 'Redirection vers Google...';
     await window.fsGoogleSignIn(window.auth, window.googleProvider);
+    // La page va se recharger après authentification Google
   } catch(e) {
     errEl.style.color = 'var(--red)';
-    if (e.code === 'auth/popup-closed-by-user') return;
     errEl.textContent = 'Erreur Google : ' + (e.code || e.message);
   }
 }
@@ -801,6 +803,18 @@ function initAuth() {
   if (!window.firebaseReady) {
     window.addEventListener('firebaseReady', initAuth);
     return;
+  }
+
+  // Gérer le retour après redirection Google
+  try {
+    const result = await getRedirectResult(auth);
+    if (result && result.user) {
+      console.log('Redirect Google OK:', result.user.email);
+    }
+  } catch(e) {
+    if (e.code !== 'auth/no-current-user' && e.code !== 'auth/null-user') {
+      console.warn('getRedirectResult error:', e.code);
+    }
   }
 
   window.fsOnAuthStateChanged(async (user) => {
