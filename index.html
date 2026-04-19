@@ -1005,38 +1005,30 @@ async function handleEmailAuth() {
 
   try {
     if (isSignup) {
-      // 1. Créer le compte Firebase Auth
-      const cred = await window.fsCreateUser(window.auth, email, password);
-      const uid = cred.user.uid;
       const requestedRole = document.getElementById('login-role-req')?.value || 'supporter';
       const requestedSwimmer = document.getElementById('login-swimmer-req')?.value || '';
 
-      // 2. Écrire dans Firestore PENDANT que l'utilisateur est encore connecté
-      let firestoreOk = false;
+      // BLOQUER onAuthStateChanged pendant toute l'inscription
+      window._signingUp = true;
       errEl.style.color = 'var(--amber)';
-      errEl.textContent = "Étape 1/3 : Compte créé, connexion à la base...";
+      errEl.textContent = "Création du compte...";
 
+      let uid, firestoreOk = false;
       try {
-        // Attendre Firebase
+        // 1. Créer le compte
+        const cred = await window.fsCreateUser(window.auth, email, password);
+        uid = cred.user.uid;
+        errEl.textContent = "Enregistrement de la demande...";
+
+        // 2. Attendre Firestore
         let waitCount = 0;
-        while ((!window.db || !window.fsDoc || !window.fsSetDoc) && waitCount < 50) {
+        while ((!window.db || !window.fsSetDoc) && waitCount < 50) {
           await new Promise(r => setTimeout(r, 100));
           waitCount++;
         }
+        if (!window.db || !window.fsSetDoc) throw new Error("Firestore non disponible");
 
-        if (!window.db) {
-          errEl.textContent = "Erreur : base de données non disponible (db manquant)";
-          await window.fsSignOut();
-          return;
-        }
-        if (!window.fsSetDoc) {
-          errEl.textContent = "Erreur : base de données non disponible (fsSetDoc manquant)";
-          await window.fsSignOut();
-          return;
-        }
-
-        errEl.textContent = "Étape 2/3 : Envoi de la demande...";
-
+        // 3. Écrire dans Firestore (utilisateur encore connecté)
         const reqRef = window.fsDoc(window.db, 'pending_users', uid);
         await window.fsSetDoc(reqRef, {
           uid, email,
@@ -1046,24 +1038,28 @@ async function handleEmailAuth() {
           requestedSwimmer
         });
         firestoreOk = true;
-        errEl.textContent = "Étape 3/3 : Déconnexion...";
-      } catch(firestoreErr) {
-        console.error('FIRESTORE ERROR:', firestoreErr);
-        errEl.style.color = 'var(--red)';
-        errEl.textContent = "Erreur Firestore : " + firestoreErr.code + " — " + firestoreErr.message;
+        errEl.textContent = "Finalisation...";
+
+        // 4. Déconnecter
         await window.fsSignOut();
-        return;
-      }
 
-      // 3. Déconnecter APRÈS l'écriture Firestore
-      await window.fsSignOut();
-
-      if (firestoreOk) {
         errEl.style.color = 'var(--green)';
         errEl.textContent = "✓ Demande envoyée ! Un coach validera votre accès.";
-      } else {
+
+      } catch(err) {
+        console.error('Inscription error:', err);
         errEl.style.color = 'var(--red)';
-        errEl.textContent = "Échec de l'enregistrement. Réessayez.";
+        if (err.code === 'auth/email-already-in-use') {
+          errEl.textContent = "Cet email est déjà utilisé";
+        } else if (!firestoreOk && uid) {
+          errEl.textContent = "Erreur Firestore : " + (err.code || err.message);
+          try { await window.fsSignOut(); } catch(e2) {}
+        } else {
+          errEl.textContent = "Erreur : " + (err.code || err.message);
+        }
+      } finally {
+        // TOUJOURS débloquer onAuthStateChanged à la fin
+        window._signingUp = false;
       }
     } else {
       await window.fsSignIn(window.auth, email, password);
@@ -1136,10 +1132,11 @@ function initAuth() {
   }
 
   window.fsOnAuthStateChanged(async (user) => {
+    // Bloquer pendant l'inscription pour éviter les conflits
+    if (window._signingUp) return;
     if (user) {
       currentUser = user;
       await showAppScreen(user);
-      // Charger les données Firebase seulement si accès accordé
       if (userRole !== 'pending' && !window._fbInitialized) {
         window._fbInitialized = true;
         await pullFromFirebase();
