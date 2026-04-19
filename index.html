@@ -462,6 +462,14 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
       <button class="btn-detail-close" onclick="closeDetailModal()">FERMER</button>
     </div>
   </div>
+
+<nav>
+  <button class="nav-btn active" data-screen="results"><span class="nav-icon">🏊</span>Résultats</button>
+  <button class="nav-btn" data-screen="add"><span class="nav-icon">➕</span>Saisie</button>
+  <button class="nav-btn" data-screen="chart"><span class="nav-icon">📈</span>Courbes</button>
+  <button class="nav-btn" data-screen="profile"><span class="nav-icon">👤</span>Profil</button>
+  <button class="nav-btn" id="nav-admin-btn" data-screen="admin" style="display:none"><span class="nav-icon">⚙️</span>Admin</button>
+</nav>
 </div>
 
 <!-- MODAL NAGEURS -->
@@ -889,6 +897,10 @@ function applyRoleUI() {
     }
   }
 
+  // Afficher/cacher onglet admin
+  const navAdminBtn = document.getElementById('nav-admin-btn');
+  if (navAdminBtn) navAdminBtn.style.display = isCoach ? 'flex' : 'none';
+
   // Cacher la flèche et désactiver le curseur pour les non-coachs
   setTimeout(() => {
     document.querySelectorAll('.swimmer-arrow').forEach(el => {
@@ -912,6 +924,7 @@ function switchScreen(screenName) {
     s.classList.toggle('active', s.id === 'screen-' + screenName);
   });
   if (screenName === 'chart') renderChart();
+  if (screenName === 'admin') renderAdminUsersList();
   if (screenName === 'profile' && currentUser) renderProfile();
   if (screenName === 'results') refreshFilters('results');
 }
@@ -1774,13 +1787,57 @@ function renderProfile() {
     }
   }
 
-  // ── Section admin (coach uniquement) ─────────────────────────────────────
-  const coachSection = document.getElementById('coach-admin-section');
-  if (coachSection) {
-    coachSection.style.display = isCoach ? 'block' : 'none';
-    if (isCoach) renderCoachUsersList();
+
+}
+
+async function renderAdminUsersList() {
+  const el = document.getElementById('admin-users-container');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px">Chargement...</div>';
+  try {
+    const { getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getDocs(window.fsCollection(window.db, 'users'));
+    const users = [];
+    snap.forEach(d => users.push({id: d.id, ...d.data()}));
+
+    if (!users.length) {
+      el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:13px">Aucun utilisateur</div>';
+      return;
+    }
+
+    const swimmers = Object.keys(STATE.swimmers);
+    const roleNames = {coach:'🏆 Coach', nageur:'🏊 Nageur', supporter:'👥 Supporter'};
+    const roleColors = {coach:'#FFB800', nageur:'#0057FF', supporter:'#00D97E'};
+
+    el.innerHTML = users.map(u => {
+      const initial = (u.email||'?')[0].toUpperCase();
+      const color = roleColors[u.role] || 'var(--muted)';
+      const needsSwimmer = u.role === 'nageur' || u.role === 'supporter';
+      return `<div class="coach-user-card">
+        <div class="coach-user-top">
+          <div class="coach-user-avatar" style="background:${color}">${initial}</div>
+          <div style="flex:1;min-width:0">
+            <div class="coach-user-email">${u.email||u.id}</div>
+            <div class="coach-user-meta">${roleNames[u.role]||u.role}${u.swimmerName?' · '+u.swimmerName:''}</div>
+          </div>
+        </div>
+        <div class="coach-role-btns">
+          ${['nageur','supporter','coach'].map(r =>
+            `<button class="coach-role-btn ${u.role===r?'active-'+r:''}"
+              onclick="coachChangeRole('${u.id}','${r}')">${roleNames[r]}</button>`
+          ).join('')}
+        </div>
+        ${needsSwimmer ? `<select class="coach-swimmer-sel" onchange="coachChangeSwimmer('${u.id}',this.value)">
+          <option value="">-- Nageur associé --</option>
+          ${swimmers.map(s=>`<option value="${s}" ${u.swimmerName===s?'selected':''}>${s}</option>`).join('')}
+        </select>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--red);padding:12px;font-size:12px">Erreur : ${e.message}</div>`;
   }
 }
+
 
 async function saveFavoriteSwimmer(swimmerName) {
   if (!currentUser || !window.db) return;
@@ -2003,4 +2060,22 @@ document.querySelector('.app').style.display = 'none';
 initAuth();
 </script>
 </body>
-</html>
+</html><!-- ÉCRAN ADMIN -->
+<div class="screen" id="screen-admin">
+  <div class="page-header">
+    <div style="font-family:var(--fd);font-size:22px;letter-spacing:1px">ADMINISTRATION</div>
+    <div class="header-sub">Gestion des utilisateurs</div>
+  </div>
+  <div style="padding:0 16px">
+    <div class="profile-card">
+      <div class="profile-card-title" style="display:flex;align-items:center;justify-content:space-between">
+        Utilisateurs
+        <button onclick="renderAdminUsersList()" style="background:none;border:none;color:var(--blue);font-size:13px;cursor:pointer">🔄 Actualiser</button>
+      </div>
+      <div id="admin-users-container"></div>
+    </div>
+    <div style="height:16px"></div>
+  </div>
+</div>
+
+
