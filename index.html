@@ -15,7 +15,7 @@
 // ── FIREBASE INIT ─────────────────────────────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBlKWmcz162vvSZ-cPVJof_98I3ZyFfyb0",
@@ -37,11 +37,8 @@ window.fsGetDoc = getDoc;
 window.fsOnSnapshot = onSnapshot;
 window.fsCollection = collection;
 const auth = getAuth(fbApp);
-const googleProvider = new GoogleAuthProvider();
-
 window.db = db;
 window.auth = auth;
-window.googleProvider = googleProvider;
 window.fsDoc = doc;
 window.fsSetDoc = setDoc;
 window.fsGetDoc = getDoc;
@@ -51,7 +48,6 @@ window.fsSignIn = signInWithEmailAndPassword;
 window.fsCreateUser = createUserWithEmailAndPassword;
 window.fsSignOut = () => signOut(auth);
 window.fsOnAuthStateChanged = (cb) => onAuthStateChanged(auth, cb);
-window.fsGoogleSignIn = (auth, provider) => signInWithPopup(auth, provider);
 window.firebaseReady = true;
 window.dispatchEvent(new Event('firebaseReady'));
 </script>
@@ -867,15 +863,7 @@ const NOLAN_DATA = [
 
 
 
-async function handleGoogleAuth() {
-  const errEl = document.getElementById('login-error');
-  errEl.textContent = '';
-  try {
-    if (!window.auth || !window.googleProvider) {
-      await new Promise(r => { window.addEventListener('firebaseReady', r, {once:true}); setTimeout(r,4000); });
-    }
-    await window.fsGoogleSignIn(window.auth, window.googleProvider);
-  } catch(e) {
+ catch(e) {
     errEl.style.color = 'var(--red)';
     if (e.code === 'auth/popup-closed-by-user') return;
     errEl.textContent = 'Erreur Google : ' + (e.code || e.message);
@@ -1063,16 +1051,8 @@ function applyRoleUI() {
   const navAdminBtn = document.getElementById('nav-admin-btn');
   if (navAdminBtn) navAdminBtn.style.display = isCoach ? 'flex' : 'none';
 
-  // Cacher la flèche et désactiver le curseur pour les non-coachs
-  setTimeout(() => {
-    document.querySelectorAll('.swimmer-arrow').forEach(el => {
-      el.style.display = isCoach ? 'inline' : 'none';
-    });
-    document.querySelectorAll('.swimmer-btn').forEach(el => {
-      el.style.cursor = isCoach ? 'pointer' : 'default';
-      el.style.opacity = isCoach ? '1' : '0.85';
-    });
-  }, 100);
+  // La flèche est visible pour tous (tout le monde peut consulter les nageurs)
+  // Seule la modification est restreinte par rôle
 
   // Boutons d'édition selon le rôle
   applyEditButtonsVisibility();
@@ -1362,7 +1342,7 @@ function updateSwimmerUI() {
 }
 
 function openModalIfCoach() {
-  if (userRole === 'coach') openModal();
+  openModal(); // Tout le monde peut changer de nageur pour consulter
 }
 
 function openModal() {
@@ -1949,7 +1929,12 @@ function renderProfile() {
     }
   }
 
-
+  // ── Section admin (coach uniquement) ─────────────────────────────────────
+  const coachSection = document.getElementById('coach-admin-section');
+  if (coachSection) {
+    coachSection.style.display = isCoach ? 'block' : 'none';
+    if (isCoach) renderCoachUsersList();
+  }
 }
 
 async function renderAdminUsersList() {
