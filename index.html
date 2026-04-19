@@ -754,16 +754,24 @@ async function handleSignOut() {
 }
 
 function showLoginScreen() {
-  document.getElementById('login-screen').style.display = 'flex';
-  document.querySelector('.app').style.display = 'none';
+  const loginScreen = document.getElementById('login-screen');
+  if (loginScreen) loginScreen.style.display = 'flex';
+  const app = document.querySelector('.app');
+  if (app) app.style.display = 'none';
 }
 
 async function showAppScreen(user) {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('user-bar-email').textContent = user.email || user.displayName || "Connecté";
+  const loginScreen = document.getElementById('login-screen');
+  if (loginScreen) loginScreen.style.display = 'none';
+
+  const emailEl = document.getElementById('user-bar-email');
+  if (emailEl) emailEl.textContent = user.email || user.displayName || "Connecté";
+
   // Charger le profil/rôle (crée supporter si nouveau compte)
   await loadUserProfile(user.uid);
-  document.querySelector('.app').style.display = 'flex';
+
+  const app = document.querySelector('.app');
+  if (app) app.style.display = 'flex';
 }
 
 function initAuth() {
