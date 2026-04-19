@@ -111,7 +111,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 .swimmer-btn{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px 12px 5px 6px;cursor:pointer;flex:1;min-width:0}
 .swimmer-avatar{width:26px;height:26px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:13px;color:#fff;flex-shrink:0}
 .swimmer-name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.swimmer-arrow{margin-left:auto;color:var(--muted);font-size:12px}
+.swimmer-arrow{margin-left:auto;color:var(--muted);font-size:12px;transition:opacity .2s}
 .header-sub{font-size:11px;color:var(--muted)}
 
 /* SWIMMER MODAL */
@@ -323,7 +323,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 <div class="screen active" id="screen-results">
   <div class="page-header">
     <div class="swimmer-bar">
-      <button class="swimmer-btn" id="sw-btn-results" onclick="openModal()">
+      <button class="swimmer-btn" id="sw-btn-results" onclick="openModalIfCoach()">
         <div class="swimmer-avatar" id="sw-avatar-results">H</div>
         <span class="swimmer-name" id="sw-name-results">Hugo</span>
         <span class="swimmer-arrow">▼</span>
@@ -361,7 +361,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 <div class="screen" id="screen-add">
   <div class="page-header">
     <div class="swimmer-bar">
-      <button class="swimmer-btn" onclick="openModal()">
+      <button class="swimmer-btn" onclick="openModalIfCoach()">
         <div class="swimmer-avatar" id="sw-avatar-add">H</div>
         <span class="swimmer-name" id="sw-name-add">Hugo</span>
         <span class="swimmer-arrow">▼</span>
@@ -458,7 +458,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 <div class="screen" id="screen-chart">
   <div class="page-header">
     <div class="swimmer-bar">
-      <button class="swimmer-btn" onclick="openModal()">
+      <button class="swimmer-btn" onclick="openModalIfCoach()">
         <div class="swimmer-avatar" id="sw-avatar-chart">H</div>
         <span class="swimmer-name" id="sw-name-chart">Hugo</span>
         <span class="swimmer-arrow">▼</span>
@@ -491,7 +491,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 <div class="screen" id="screen-profile">
   <div class="page-header">
     <div class="swimmer-bar">
-      <button class="swimmer-btn" onclick="openModal()">
+      <button class="swimmer-btn" onclick="openModalIfCoach()">
         <div class="swimmer-avatar" id="sw-avatar-profile">H</div>
         <span class="swimmer-name" id="sw-name-profile">Hugo</span>
         <span class="swimmer-arrow">▼</span>
@@ -1121,17 +1121,55 @@ async function loadUserProfile(uid) {
 function applyRoleUI() {
   const isCoach = userRole === 'coach';
   const isNageur = userRole === 'nageur';
-  const isActive = isCoach || isNageur || userRole === 'supporter';
+  const isSupporter = userRole === 'supporter';
 
-  // Bouton admin visible uniquement pour les coachs
+  // Bouton admin : uniquement pour les coachs
   const btnAdmin = document.getElementById('btn-admin');
   if (btnAdmin) btnAdmin.style.display = isCoach ? 'block' : 'none';
 
-  // Tous les utilisateurs ont au moins accès supporter
-  // (le profil est créé automatiquement à l'inscription)
+  // Navigation par défaut selon le rôle
+  if (isNageur || isSupporter) {
+    // Trouver le nageur associé
+    const swimmerName = userProfile && userProfile.swimmerName ? userProfile.swimmerName : null;
 
-  // Boutons d'édition : visibles selon le rôle
+    if (swimmerName && STATE.swimmers[swimmerName]) {
+      // Switcher vers le bon nageur
+      STATE.currentSwimmer = swimmerName;
+      updateSwimmerUI();
+    }
+
+    if (isNageur) {
+      // Nageur → onglet Saisie par défaut
+      switchScreen('add');
+    } else {
+      // Supporter → onglet Résultats du nageur associé
+      switchScreen('results');
+    }
+  }
+
+  // Cacher la flèche et désactiver le curseur pour les non-coachs
+  document.querySelectorAll('.swimmer-arrow').forEach(el => {
+    el.style.display = isCoach ? 'inline' : 'none';
+  });
+  document.querySelectorAll('.swimmer-btn').forEach(el => {
+    el.style.cursor = isCoach ? 'pointer' : 'default';
+    el.style.opacity = isCoach ? '1' : '0.85';
+  });
+
+  // Boutons d'édition selon le rôle
   applyEditButtonsVisibility();
+}
+
+function switchScreen(screenName) {
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.screen === screenName);
+  });
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.toggle('active', s.id === 'screen-' + screenName);
+  });
+  if (screenName === 'chart') renderChart();
+  if (screenName === 'profile') renderProfile();
+  if (screenName === 'results') refreshFilters('results');
 }
 
 function applyEditButtonsVisibility() {
@@ -1269,9 +1307,9 @@ function renderUsersList(users) {
         `).join('')}
         <button class="btn-del-user" onclick="deleteUser('${u.id}')">🗑</button>
       </div>
-      ${u.role==='nageur' ? `
+      ${(u.role==='nageur' || u.role==='supporter') ? `
         <select class="admin-swimmer-select" onchange="changeUserSwimmer('${u.id}',this.value)">
-          <option value="">-- Profil nageur --</option>
+          <option value="">-- Nageur associé --</option>
           ${swimmers.map(s => `<option value="${s}" ${u.swimmerName===s?'selected':''}>${s}</option>`).join('')}
         </select>` : ''}
     </div>
@@ -1570,6 +1608,10 @@ function updateSwimmerUI() {
     if (av) { av.textContent = initials(name); av.style.background = color; }
     if (nm) nm.textContent = name;
   });
+}
+
+function openModalIfCoach() {
+  if (userRole === 'coach') openModal();
 }
 
 function openModal() {
@@ -2223,14 +2265,7 @@ function showToast(msg) {
 
 // ── NAV ──────────────────────────────────────────────────────────────────────
 document.querySelectorAll('.nav-btn').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('screen-'+btn.dataset.screen).classList.add('active');
-    if (btn.dataset.screen === 'chart') renderChart();
-    if (btn.dataset.screen === 'profile') renderProfile();
-  };
+  btn.onclick = () => switchScreen(btn.dataset.screen);
 });
 
 // ── HAUTEUR NAV ANDROID ──────────────────────────────────────────────────────
