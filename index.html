@@ -1012,16 +1012,31 @@ async function handleEmailAuth() {
       const requestedSwimmer = document.getElementById('login-swimmer-req')?.value || '';
 
       // 2. Écrire dans Firestore PENDANT que l'utilisateur est encore connecté
-      // (les règles Firestore exigent request.auth != null)
       let firestoreOk = false;
+      errEl.style.color = 'var(--amber)';
+      errEl.textContent = "Étape 1/3 : Compte créé, connexion à la base...";
+
       try {
-        // S'assurer que Firestore est prêt
-        if (!window.db || !window.fsDoc || !window.fsSetDoc) {
-          await new Promise(resolve => {
-            window.addEventListener('firebaseReady', resolve, { once: true });
-            setTimeout(resolve, 5000);
-          });
+        // Attendre Firebase
+        let waitCount = 0;
+        while ((!window.db || !window.fsDoc || !window.fsSetDoc) && waitCount < 50) {
+          await new Promise(r => setTimeout(r, 100));
+          waitCount++;
         }
+
+        if (!window.db) {
+          errEl.textContent = "Erreur : base de données non disponible (db manquant)";
+          await window.fsSignOut();
+          return;
+        }
+        if (!window.fsSetDoc) {
+          errEl.textContent = "Erreur : base de données non disponible (fsSetDoc manquant)";
+          await window.fsSignOut();
+          return;
+        }
+
+        errEl.textContent = "Étape 2/3 : Envoi de la demande...";
+
         const reqRef = window.fsDoc(window.db, 'pending_users', uid);
         await window.fsSetDoc(reqRef, {
           uid, email,
@@ -1031,8 +1046,13 @@ async function handleEmailAuth() {
           requestedSwimmer
         });
         firestoreOk = true;
+        errEl.textContent = "Étape 3/3 : Déconnexion...";
       } catch(firestoreErr) {
-        console.warn('Firestore write error:', firestoreErr.code, firestoreErr.message);
+        console.error('FIRESTORE ERROR:', firestoreErr);
+        errEl.style.color = 'var(--red)';
+        errEl.textContent = "Erreur Firestore : " + firestoreErr.code + " — " + firestoreErr.message;
+        await window.fsSignOut();
+        return;
       }
 
       // 3. Déconnecter APRÈS l'écriture Firestore
@@ -1042,8 +1062,8 @@ async function handleEmailAuth() {
         errEl.style.color = 'var(--green)';
         errEl.textContent = "✓ Demande envoyée ! Un coach validera votre accès.";
       } else {
-        errEl.style.color = 'var(--amber)';
-        errEl.textContent = "Compte créé mais demande non enregistrée. Contactez un coach.";
+        errEl.style.color = 'var(--red)';
+        errEl.textContent = "Échec de l'enregistrement. Réessayez.";
       }
     } else {
       await window.fsSignIn(window.auth, email, password);
