@@ -1009,12 +1009,29 @@ async function handleEmailAuth() {
       const uid = cred.user.uid;
       const requestedRole = document.getElementById('login-role-req')?.value || 'supporter';
       const requestedSwimmer = document.getElementById('login-swimmer-req')?.value || '';
-      // Enregistrer la demande dans Firestore avec l uid
-      const reqRef = window.fsDoc(window.db, 'pending_users', uid);
-      await window.fsSetDoc(reqRef, { 
-        uid, email, requestedAt: Date.now(), status: 'pending',
-        requestedRole, requestedSwimmer
+
+      // Attendre que Firebase Firestore soit prêt
+      await new Promise(resolve => {
+        if (window.db && window.fsDoc && window.fsSetDoc) { resolve(); return; }
+        window.addEventListener('firebaseReady', resolve, { once: true });
+        setTimeout(resolve, 3000); // timeout 3s
       });
+
+      // Enregistrer la demande dans Firestore
+      try {
+        const reqRef = window.fsDoc(window.db, 'pending_users', uid);
+        await window.fsSetDoc(reqRef, {
+          uid, email, requestedAt: Date.now(), status: 'pending',
+          requestedRole, requestedSwimmer
+        });
+      } catch(firestoreErr) {
+        console.warn('Firestore write error:', firestoreErr);
+        // Stocker localement en backup si Firestore échoue
+        const backup = JSON.parse(localStorage.getItem('pending_backup') || '[]');
+        backup.push({ uid, email, requestedAt: Date.now(), requestedRole, requestedSwimmer });
+        localStorage.setItem('pending_backup', JSON.stringify(backup));
+      }
+
       // Déconnecter immédiatement — coach doit valider
       await window.fsSignOut();
       errEl.style.color = 'var(--green)';
@@ -1247,7 +1264,13 @@ async function loadAdminData() {
     const pendingCount = pending.filter(p => p.status === 'pending').length;
     document.getElementById('pending-count').textContent = pendingCount > 0 ? ` (${pendingCount})` : '';
 
-    renderPendingList(pending.filter(p => p.status === 'pending'));
+    // Fusionner avec les backups locaux si besoin
+    const localBackup = JSON.parse(localStorage.getItem('pending_backup') || '[]');
+    const allPending = [...pending.filter(p => p.status === 'pending')];
+    localBackup.forEach(b => {
+      if (!allPending.find(p => p.uid === b.uid)) allPending.push({...b, status:'pending'});
+    });
+    renderPendingList(allPending);
     renderUsersList(users);
 
   } catch(e) {
