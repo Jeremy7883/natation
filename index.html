@@ -861,15 +861,6 @@ const NOLAN_DATA = [
 {dist:50,nage:"Pap.",temps:"00:33.17",age:"(17 ans)",pts:"719",meeting:"SARTROUVILLE",date:"2025-03-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"}
 ];
 
-
-
- catch(e) {
-    errEl.style.color = 'var(--red)';
-    if (e.code === 'auth/popup-closed-by-user') return;
-    errEl.textContent = 'Erreur Google : ' + (e.code || e.message);
-  }
-}
-
 // ── AUTHENTIFICATION ─────────────────────────────────────────────────────────
 let currentUser = null;
 
@@ -890,30 +881,34 @@ async function handleEmailAuth() {
   const isSignup = document.getElementById('btn-login-action').textContent.includes('INSCRIRE');
   const errEl = document.getElementById('login-error');
   errEl.textContent = '';
+  errEl.style.color = 'var(--red)';
 
   if (!email || !password) { errEl.textContent = 'Email et mot de passe requis'; return; }
   if (password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum'; return; }
+
+  // Attendre que Firebase soit prêt
+  if (!window.firebaseReady || !window.fsSignIn) {
+    errEl.style.color = 'var(--amber)';
+    errEl.textContent = 'Connexion en cours...';
+    await new Promise(r => {
+      if (window.firebaseReady && window.fsSignIn) { r(); return; }
+      window.addEventListener('firebaseReady', r, { once: true });
+      setTimeout(r, 5000);
+    });
+  }
+
+  if (!window.fsSignIn) {
+    errEl.textContent = 'Erreur : Firebase non disponible. Rechargez la page.';
+    return;
+  }
 
   try {
     if (isSignup) {
       errEl.style.color = 'var(--amber)';
       errEl.textContent = "Création du compte...";
-      try {
-        // Créer le compte Firebase Auth
-        const cred = await window.fsCreateUser(window.auth, email, password);
-        // onAuthStateChanged va se déclencher et connecter l'utilisateur
-        // Le profil supporter sera créé dans showAppScreen si absent
-        errEl.style.color = 'var(--green)';
-        errEl.textContent = "✓ Compte créé !";
-      } catch(err) {
-        errEl.style.color = 'var(--red)';
-        const msgs = {
-          'auth/email-already-in-use': "Cet email est déjà utilisé",
-          'auth/weak-password': "Mot de passe trop court (6 caractères minimum)",
-          'auth/invalid-email': "Adresse email invalide",
-        };
-        errEl.textContent = msgs[err.code] || "Erreur : " + (err.code || err.message);
-      }
+      await window.fsCreateUser(window.auth, email, password);
+      errEl.style.color = 'var(--green)';
+      errEl.textContent = "✓ Compte créé !";
     } else {
       await window.fsSignIn(window.auth, email, password);
     }
@@ -925,13 +920,12 @@ async function handleEmailAuth() {
       'auth/invalid-credential': "Email ou mot de passe incorrect",
       'auth/email-already-in-use': "Cet email est déjà utilisé",
       'auth/too-many-requests': "Trop de tentatives. Réessayez plus tard.",
-      'auth/user-disabled': "Compte désactivé. Contactez l'administrateur.",
+      'auth/user-disabled': "Compte désactivé.",
       'auth/invalid-email': "Adresse email invalide",
     };
     errEl.textContent = msgs[e.code] || 'Erreur : ' + e.message;
   }
 }
-
 
 
 async function handleSignOut() {
