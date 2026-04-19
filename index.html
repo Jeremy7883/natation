@@ -963,7 +963,7 @@ async function handleEmailAuth() {
     if (isSignup) {
       await window.fsCreateUser(window.auth, email, password);
       errEl.style.color = 'var(--green)';
-      errEl.textContent = '✓ Compte créé ! En attente de validation par l'administrateur.';
+      errEl.textContent = "✓ Compte créé ! En attente de validation par l'administrateur.";
       // Déconnecter immédiatement — admin doit valider
       await window.fsSignOut();
       // Enregistrer la demande dans Firestore
@@ -975,13 +975,13 @@ async function handleEmailAuth() {
   } catch(e) {
     errEl.style.color = 'var(--red)';
     const msgs = {
-      'auth/user-not-found': 'Aucun compte trouvé pour cet email',
-      'auth/wrong-password': 'Mot de passe incorrect',
-      'auth/invalid-credential': 'Email ou mot de passe incorrect',
-      'auth/email-already-in-use': 'Cet email est déjà utilisé',
-      'auth/too-many-requests': 'Trop de tentatives. Réessayez plus tard.',
-      'auth/user-disabled': 'Compte désactivé. Contactez l'administrateur.',
-      'auth/invalid-email': 'Adresse email invalide',
+      'auth/user-not-found': "Aucun compte trouvé pour cet email",
+      'auth/wrong-password': "Mot de passe incorrect",
+      'auth/invalid-credential': "Email ou mot de passe incorrect",
+      'auth/email-already-in-use': "Cet email est déjà utilisé",
+      'auth/too-many-requests': "Trop de tentatives. Réessayez plus tard.",
+      'auth/user-disabled': "Compte désactivé. Contactez l'administrateur.",
+      'auth/invalid-email': "Adresse email invalide",
     };
     errEl.textContent = msgs[e.code] || 'Erreur : ' + e.message;
   }
@@ -996,7 +996,7 @@ async function handleGoogleAuth() {
     errEl.style.color = 'var(--red)';
     if (e.code === 'auth/popup-closed-by-user') return;
     if (e.code === 'auth/user-disabled') {
-      errEl.textContent = 'Compte désactivé. Contactez l'administrateur.';
+      errEl.textContent = "Compte désactivé. Contactez l'administrateur.";
     } else {
       errEl.textContent = 'Erreur Google : ' + e.message;
     }
@@ -1004,7 +1004,7 @@ async function handleGoogleAuth() {
 }
 
 async function handleSignOut() {
-  if (!confirm('Se déconnecter ?')) return;
+  if (!confirm("Se déconnecter ?")) return;
   await window.fsSignOut();
 }
 
@@ -1020,7 +1020,7 @@ function showAppScreen(user) {
 }
 
 function initAuth() {
-  // Mettre l'icône dans le login
+  // Mettre l icone dans le login
   const logoEl = document.getElementById('login-logo');
   if (logoEl) {
     // Attendre que les icônes soient disponibles
