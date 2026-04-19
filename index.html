@@ -17,6 +17,7 @@
 // ── FIREBASE INIT ─────────────────────────────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBlKWmcz162vvSZ-cPVJof_98I3ZyFfyb0",
@@ -37,6 +38,22 @@ window.fsSetDoc = setDoc;
 window.fsGetDoc = getDoc;
 window.fsOnSnapshot = onSnapshot;
 window.fsCollection = collection;
+const auth = getAuth(fbApp);
+const googleProvider = new GoogleAuthProvider();
+
+window.db = db;
+window.auth = auth;
+window.googleProvider = googleProvider;
+window.fsDoc = doc;
+window.fsSetDoc = setDoc;
+window.fsGetDoc = getDoc;
+window.fsOnSnapshot = onSnapshot;
+window.fsCollection = collection;
+window.fsSignIn = signInWithEmailAndPassword;
+window.fsCreateUser = createUserWithEmailAndPassword;
+window.fsGoogleSignIn = (auth, provider) => signInWithPopup(auth, provider);
+window.fsSignOut = () => signOut(auth);
+window.fsOnAuthStateChanged = (cb) => onAuthStateChanged(auth, cb);
 window.firebaseReady = true;
 window.dispatchEvent(new Event('firebaseReady'));
 </script>
@@ -63,6 +80,30 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 
 /* HEADER */
 .page-header{padding:10px 16px 8px;position:sticky;top:0;background:var(--dark);z-index:10;border-bottom:1px solid var(--border)}
+
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;background:var(--dark);z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.login-logo{width:90px;height:90px;border-radius:20px;margin-bottom:20px}
+.login-title{font-family:var(--fd);font-size:34px;letter-spacing:2px;color:var(--text);margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px}
+.login-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--border);border-radius:var(--rr);padding:24px}
+.login-tabs{display:flex;margin-bottom:20px;background:var(--surface);border-radius:10px;padding:3px}
+.login-tab{flex:1;padding:8px;border:none;background:none;color:var(--muted);font-family:var(--fb);font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;transition:all .15s}
+.login-tab.active{background:var(--blue);color:#fff}
+.login-field{margin-bottom:14px}
+.login-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-family:var(--fb);font-size:14px;outline:none;transition:border-color .2s}
+.login-input:focus{border-color:var(--blue)}
+.btn-login{width:100%;padding:14px;border-radius:var(--r);background:var(--blue);color:#fff;font-family:var(--fd);font-size:18px;letter-spacing:1px;border:none;cursor:pointer;margin-bottom:12px;transition:background .15s}
+.btn-login:active{background:var(--blue-dark)}
+.login-divider{display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--muted);font-size:12px}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.btn-google{width:100%;padding:12px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--fb);font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:border-color .15s}
+.btn-google:hover{border-color:var(--blue)}
+.login-error{color:var(--red);font-size:12px;text-align:center;margin-top:8px;min-height:18px}
+.login-info{color:var(--muted);font-size:11px;text-align:center;margin-top:12px;line-height:1.6}
+.user-bar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border-radius:999px;font-size:12px;color:var(--muted);cursor:pointer;border:1px solid var(--border)}
+.user-bar-email{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);font-size:11px}
 
 /* SWIMMER SELECTOR */
 .swimmer-bar{display:flex;align-items:center;gap:8px;margin-bottom:4px}
@@ -230,6 +271,35 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 </style>
 </head>
 <body>
+<!-- ÉCRAN LOGIN -->
+<div id="login-screen">
+  <img class="login-logo" id="login-logo" src="" alt="Natation">
+  <div class="login-title">NATATION</div>
+  <div class="login-sub">Suivi des performances</div>
+  <div class="login-card">
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="switchLoginTab('signin')">Se connecter</button>
+      <button class="login-tab" onclick="switchLoginTab('signup')">S'inscrire</button>
+    </div>
+    <div class="login-field">
+      <input class="login-input" id="login-email" type="email" placeholder="Email" autocomplete="email">
+    </div>
+    <div class="login-field">
+      <input class="login-input" id="login-password" type="password" placeholder="Mot de passe" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="btn-login-action" onclick="handleEmailAuth()">SE CONNECTER</button>
+    <div id="login-info-signup" style="display:none" class="login-info">
+      ⚠️ Votre demande sera examinée.<br>Un administrateur devra valider votre accès.
+    </div>
+    <div class="login-divider">ou</div>
+    <button class="btn-google" onclick="handleGoogleAuth()">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+      Continuer avec Google
+    </button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
 <div class="app">
 
 <!-- ÉCRAN RÉSULTATS -->
@@ -242,6 +312,11 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
         <span class="swimmer-arrow">▼</span>
       </button>
       <span id="sync-status" title="Synchronisation" style="font-size:16px;cursor:default;margin-left:4px">☁️</span>
+      <button class="user-bar" onclick="handleSignOut()" title="Se déconnecter">
+        <span>👤</span>
+        <span class="user-bar-email" id="user-bar-email">—</span>
+        <span style="color:var(--muted);font-size:10px">⏏</span>
+      </button>
     </div>
     <div class="header-sub" id="results-count">0 résultats</div>
   </div>
@@ -693,6 +768,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
 
   const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
   const manifestUrl = URL.createObjectURL(manifestBlob);
+  window._icon512 = icon512;
   document.getElementById('pwa-manifest').href = manifestUrl;
 
   // Apple touch icon
@@ -857,6 +933,126 @@ const NOLAN_DATA = [
 {dist:50,nage:"Dos",temps:"00:39.29",age:"(17 ans)",pts:"548",meeting:"SARTROUVILLE",date:"2025-03-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
 {dist:50,nage:"Pap.",temps:"00:33.17",age:"(17 ans)",pts:"719",meeting:"SARTROUVILLE",date:"2025-03-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"}
 ];
+
+
+// ── AUTHENTIFICATION ─────────────────────────────────────────────────────────
+let currentUser = null;
+
+function switchLoginTab(mode) {
+  const isSignup = mode === 'signup';
+  document.querySelectorAll('.login-tab').forEach((t,i) => {
+    t.classList.toggle('active', isSignup ? i===1 : i===0);
+  });
+  document.getElementById('btn-login-action').textContent = isSignup ? "S'INSCRIRE" : 'SE CONNECTER';
+  document.getElementById('login-info-signup').style.display = isSignup ? 'block' : 'none';
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('login-password').autocomplete = isSignup ? 'new-password' : 'current-password';
+}
+
+async function handleEmailAuth() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const isSignup = document.getElementById('btn-login-action').textContent.includes('INSCRIRE');
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+
+  if (!email || !password) { errEl.textContent = 'Email et mot de passe requis'; return; }
+  if (password.length < 6) { errEl.textContent = 'Mot de passe : 6 caractères minimum'; return; }
+
+  try {
+    if (isSignup) {
+      await window.fsCreateUser(window.auth, email, password);
+      errEl.style.color = 'var(--green)';
+      errEl.textContent = '✓ Compte créé ! En attente de validation par l'administrateur.';
+      // Déconnecter immédiatement — admin doit valider
+      await window.fsSignOut();
+      // Enregistrer la demande dans Firestore
+      const reqRef = window.fsDoc(window.db, 'pending_users', email.replace('@','_').replace('.','_'));
+      await window.fsSetDoc(reqRef, { email, requestedAt: Date.now(), status: 'pending' });
+    } else {
+      await window.fsSignIn(window.auth, email, password);
+    }
+  } catch(e) {
+    errEl.style.color = 'var(--red)';
+    const msgs = {
+      'auth/user-not-found': 'Aucun compte trouvé pour cet email',
+      'auth/wrong-password': 'Mot de passe incorrect',
+      'auth/invalid-credential': 'Email ou mot de passe incorrect',
+      'auth/email-already-in-use': 'Cet email est déjà utilisé',
+      'auth/too-many-requests': 'Trop de tentatives. Réessayez plus tard.',
+      'auth/user-disabled': 'Compte désactivé. Contactez l'administrateur.',
+      'auth/invalid-email': 'Adresse email invalide',
+    };
+    errEl.textContent = msgs[e.code] || 'Erreur : ' + e.message;
+  }
+}
+
+async function handleGoogleAuth() {
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  try {
+    await window.fsGoogleSignIn(window.auth, window.googleProvider);
+  } catch(e) {
+    errEl.style.color = 'var(--red)';
+    if (e.code === 'auth/popup-closed-by-user') return;
+    if (e.code === 'auth/user-disabled') {
+      errEl.textContent = 'Compte désactivé. Contactez l'administrateur.';
+    } else {
+      errEl.textContent = 'Erreur Google : ' + e.message;
+    }
+  }
+}
+
+async function handleSignOut() {
+  if (!confirm('Se déconnecter ?')) return;
+  await window.fsSignOut();
+}
+
+function showLoginScreen() {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.querySelector('.app').style.display = 'none';
+}
+
+function showAppScreen(user) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.querySelector('.app').style.display = 'flex';
+  document.getElementById('user-bar-email').textContent = user.email || user.displayName || 'Connecté';
+}
+
+function initAuth() {
+  // Mettre l'icône dans le login
+  const logoEl = document.getElementById('login-logo');
+  if (logoEl) {
+    // Attendre que les icônes soient disponibles
+    const checkIcon = setInterval(() => {
+      if (window._icon512) { logoEl.src = window._icon512; clearInterval(checkIcon); }
+    }, 100);
+  }
+
+  if (!window.firebaseReady) {
+    window.addEventListener('firebaseReady', initAuth);
+    return;
+  }
+
+  window.fsOnAuthStateChanged(async (user) => {
+    if (user) {
+      currentUser = user;
+      showAppScreen(user);
+      // Charger les données Firebase
+      if (!window._fbInitialized) {
+        window._fbInitialized = true;
+        await pullFromFirebase();
+        subscribeFirebase();
+      }
+    } else {
+      currentUser = null;
+      showLoginScreen();
+      window._fbInitialized = false;
+      if (fbUnsubscribe) { fbUnsubscribe(); fbUnsubscribe = null; }
+    }
+  });
+}
+
 
 // ── ÉTAT LOCAL PAR DÉFAUT ────────────────────────────────────────────────────
 const DEFAULT_STATE = {
@@ -1754,14 +1950,10 @@ refreshFilters('graph');
 initForm();
 renderProfile();
 
-// Init Firebase
-if (window.firebaseReady) {
-  pullFromFirebase().then(() => subscribeFirebase());
-} else {
-  window.addEventListener('firebaseReady', () => {
-    pullFromFirebase().then(() => subscribeFirebase());
-  });
-}
+// Init Auth + Firebase
+// Cacher l'app au démarrage, montrer login
+document.querySelector('.app').style.display = 'none';
+initAuth();
 </script>
 </body>
 </html>
