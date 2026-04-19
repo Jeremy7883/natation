@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0A0E1A">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Natation</title>
+<title>Natation v4.1</title>
 <meta name="application-name" content="Natation">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1155,32 +1155,8 @@ function applyEditButtonsVisibility() {
   });
 }
 
-function showPendingScreen() {
-  document.querySelector('.app').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'none';
-  // Créer/afficher écran d'attente
-  let pending = document.getElementById('pending-screen');
-  if (!pending) {
-    pending = document.createElement('div');
-    pending.id = 'pending-screen';
-    pending.style.cssText = 'position:fixed;inset:0;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:300';
-    pending.innerHTML = `
-      <div style="font-size:48px;margin-bottom:16px">⏳</div>
-      <div style="font-family:var(--fd);font-size:28px;letter-spacing:1px;margin-bottom:8px">EN ATTENTE</div>
-      <div style="font-size:14px;color:var(--muted);text-align:center;max-width:280px;line-height:1.6;margin-bottom:32px">
-        Votre demande a été envoyée.<br>Un coach validera votre accès prochainement.
-      </div>
-      <button onclick="handleSignOut()" style="padding:12px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--fb);font-size:14px;cursor:pointer">Se déconnecter</button>
-    `;
-    document.body.appendChild(pending);
-  }
-  pending.style.display = 'flex';
-}
-
-function hidePendingScreen() {
-  const p = document.getElementById('pending-screen');
-  if (p) p.style.display = 'none';
-}
+function showPendingScreen() { /* désactivé - tous les comptes sont supporters */ }
+function hidePendingScreen() { const p = document.getElementById('pending-screen'); if (p) p.remove(); }
 
 // ── ÉCRAN ADMIN ──────────────────────────────────────────────────────────────
 let adminTab = 'pending';
