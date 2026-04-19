@@ -17,7 +17,7 @@
 // ── FIREBASE INIT ─────────────────────────────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBlKWmcz162vvSZ-cPVJof_98I3ZyFfyb0",
@@ -53,6 +53,7 @@ window.fsSignIn = signInWithEmailAndPassword;
 window.fsCreateUser = createUserWithEmailAndPassword;
 window.fsGoogleSignIn = (auth, provider) => signInWithPopup(auth, provider);
 window.fsSignOut = () => signOut(auth);
+window.fsDeleteUser = (user) => deleteUser(user);
 window.fsOnAuthStateChanged = (cb) => onAuthStateChanged(auth, cb);
 window.firebaseReady = true;
 window.dispatchEvent(new Event('firebaseReady'));
@@ -289,19 +290,9 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
     </div>
     <button class="btn-login" id="btn-login-action" onclick="handleEmailAuth()">SE CONNECTER</button>
     <div id="login-info-signup" style="display:none">
-      <div class="login-field">
-        <select class="login-input" id="login-role-req" style="margin-top:4px">
-          <option value="nageur">🏊 Nageur</option>
-          <option value="supporter">👥 Supporter</option>
-          <option value="coach">🏆 Coach / Admin</option>
-        </select>
+      <div class="login-info" style="margin-bottom:8px">
+        📋 Vous aurez accès en mode <strong>Supporter</strong>.<br>Un coach peut modifier votre rôle ensuite.
       </div>
-      <div id="login-swimmer-field" style="display:none">
-        <select class="login-input" id="login-swimmer-req">
-          <option value="">-- Choisir mon profil nageur --</option>
-        </select>
-      </div>
-      <div class="login-info">⚠️ Votre demande sera examinée par un coach avant activation.</div>
     </div>
     <div class="login-divider">ou</div>
     <button class="btn-google" onclick="handleGoogleAuth()">
@@ -974,23 +965,6 @@ function switchLoginTab(mode) {
   document.getElementById('login-info-signup').style.display = isSignup ? 'block' : 'none';
   document.getElementById('login-error').textContent = '';
   document.getElementById('login-password').autocomplete = isSignup ? 'new-password' : 'current-password';
-  if (isSignup) populateSwimmerSelect();
-}
-
-function populateSwimmerSelect() {
-  const sel = document.getElementById('login-swimmer-req');
-  const roleEl = document.getElementById('login-role-req');
-  if (!sel || !roleEl) return;
-  // Peupler la liste des nageurs
-  const swimmers = Object.keys(STATE.swimmers);
-  sel.innerHTML = '<option value="">-- Choisir mon profil nageur --</option>' +
-    swimmers.map(s => `<option value="${s}">${s}</option>`).join('');
-  // Afficher/cacher selon le rôle
-  roleEl.onchange = () => {
-    const isNageur = roleEl.value === 'nageur';
-    document.getElementById('login-swimmer-field').style.display = isNageur ? 'block' : 'none';
-  };
-  roleEl.onchange();
 }
 
 async function handleEmailAuth() {
@@ -1005,61 +979,23 @@ async function handleEmailAuth() {
 
   try {
     if (isSignup) {
-      const requestedRole = document.getElementById('login-role-req')?.value || 'supporter';
-      const requestedSwimmer = document.getElementById('login-swimmer-req')?.value || '';
-
-      // BLOQUER onAuthStateChanged pendant toute l'inscription
-      window._signingUp = true;
       errEl.style.color = 'var(--amber)';
       errEl.textContent = "Création du compte...";
-
-      let uid, firestoreOk = false;
       try {
-        // 1. Créer le compte
+        // Créer le compte Firebase Auth
         const cred = await window.fsCreateUser(window.auth, email, password);
-        uid = cred.user.uid;
-        errEl.textContent = "Enregistrement de la demande...";
-
-        // 2. Attendre Firestore
-        let waitCount = 0;
-        while ((!window.db || !window.fsSetDoc) && waitCount < 50) {
-          await new Promise(r => setTimeout(r, 100));
-          waitCount++;
-        }
-        if (!window.db || !window.fsSetDoc) throw new Error("Firestore non disponible");
-
-        // 3. Écrire dans Firestore (utilisateur encore connecté)
-        const reqRef = window.fsDoc(window.db, 'pending_users', uid);
-        await window.fsSetDoc(reqRef, {
-          uid, email,
-          requestedAt: Date.now(),
-          status: 'pending',
-          requestedRole,
-          requestedSwimmer
-        });
-        firestoreOk = true;
-        errEl.textContent = "Finalisation...";
-
-        // 4. Déconnecter
-        await window.fsSignOut();
-
+        // onAuthStateChanged va se déclencher et connecter l'utilisateur
+        // Le profil supporter sera créé dans showAppScreen si absent
         errEl.style.color = 'var(--green)';
-        errEl.textContent = "✓ Demande envoyée ! Un coach validera votre accès.";
-
+        errEl.textContent = "✓ Compte créé !";
       } catch(err) {
-        console.error('Inscription error:', err);
         errEl.style.color = 'var(--red)';
-        if (err.code === 'auth/email-already-in-use') {
-          errEl.textContent = "Cet email est déjà utilisé";
-        } else if (!firestoreOk && uid) {
-          errEl.textContent = "Erreur Firestore : " + (err.code || err.message);
-          try { await window.fsSignOut(); } catch(e2) {}
-        } else {
-          errEl.textContent = "Erreur : " + (err.code || err.message);
-        }
-      } finally {
-        // TOUJOURS débloquer onAuthStateChanged à la fin
-        window._signingUp = false;
+        const msgs = {
+          'auth/email-already-in-use': "Cet email est déjà utilisé",
+          'auth/weak-password': "Mot de passe trop court (6 caractères minimum)",
+          'auth/invalid-email': "Adresse email invalide",
+        };
+        errEl.textContent = msgs[err.code] || "Erreur : " + (err.code || err.message);
       }
     } else {
       await window.fsSignIn(window.auth, email, password);
@@ -1107,13 +1043,10 @@ function showLoginScreen() {
 
 async function showAppScreen(user) {
   document.getElementById('login-screen').style.display = 'none';
-  hidePendingScreen();
   document.getElementById('user-bar-email').textContent = user.email || user.displayName || "Connecté";
-  // Charger le profil/rôle
+  // Charger le profil/rôle (crée supporter si nouveau compte)
   await loadUserProfile(user.uid);
-  if (userRole !== 'pending' && userRole !== null) {
-    document.querySelector('.app').style.display = 'flex';
-  }
+  document.querySelector('.app').style.display = 'flex';
 }
 
 function initAuth() {
@@ -1132,8 +1065,6 @@ function initAuth() {
   }
 
   window.fsOnAuthStateChanged(async (user) => {
-    // Bloquer pendant l'inscription pour éviter les conflits
-    if (window._signingUp) return;
     if (user) {
       currentUser = user;
       await showAppScreen(user);
@@ -1167,14 +1098,22 @@ async function loadUserProfile(uid) {
     const snap = await window.fsGetDoc(ref);
     if (snap.exists()) {
       userProfile = snap.data();
-      userRole = userProfile.role || 'pending';
+      userRole = userProfile.role || 'supporter';
     } else {
-      userRole = 'pending';
-      userProfile = null;
+      // Nouveau compte : créer automatiquement un profil supporter
+      const email = currentUser ? (currentUser.email || currentUser.displayName || '') : '';
+      const newProfile = {
+        email, role: 'supporter', swimmerName: '',
+        createdAt: Date.now()
+      };
+      await window.fsSetDoc(ref, newProfile);
+      userProfile = newProfile;
+      userRole = 'supporter';
     }
   } catch(e) {
     console.warn('loadUserProfile error:', e);
-    userRole = 'pending';
+    userRole = 'supporter'; // Par défaut supporter en cas d'erreur
+    userProfile = { role: 'supporter' };
   }
   applyRoleUI();
 }
@@ -1188,11 +1127,8 @@ function applyRoleUI() {
   const btnAdmin = document.getElementById('btn-admin');
   if (btnAdmin) btnAdmin.style.display = isCoach ? 'block' : 'none';
 
-  // Si pending ou non configuré : afficher message d'attente
-  if (!isActive) {
-    showPendingScreen();
-    return;
-  }
+  // Tous les utilisateurs ont au moins accès supporter
+  // (le profil est créé automatiquement à l'inscription)
 
   // Boutons d'édition : visibles selon le rôle
   applyEditButtonsVisibility();
