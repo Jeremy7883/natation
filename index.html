@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0A0E1A">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Natation</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script type="module">
+// ── FIREBASE INIT ─────────────────────────────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBlKWmcz162vvSZ-cPVJof_98I3ZyFfyb0",
+  authDomain: "natation-app-71d2f.firebaseapp.com",
+  projectId: "natation-app-71d2f",
+  storageBucket: "natation-app-71d2f.firebasestorage.app",
+  messagingSenderId: "647290864564",
+  appId: "1:647290864564:web:05cc6c55ec246c8d2068e1"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+// Exposer globalement
+window.db = db;
+window.fsDoc = doc;
+window.fsSetDoc = setDoc;
+window.fsGetDoc = getDoc;
+window.fsOnSnapshot = onSnapshot;
+window.fsCollection = collection;
+window.firebaseReady = true;
+window.dispatchEvent(new Event('firebaseReady'));
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --blue:#0057FF;--blue-dark:#003AB0;
+  --dark:#0A0E1A;--card:#141826;--surface:#1C2235;
+  --text:#F0F2FF;--muted:#6B7394;--border:#252D45;
+  --green:#00D97E;--amber:#FFB800;--red:#FF4D6A;
+  --fd:'Bebas Neue',sans-serif;--fb:'DM Sans',sans-serif;
+  --r:14px;--rr:20px;
+}
+html,body{height:100%;background:var(--dark);color:var(--text);font-family:var(--fb);overflow:hidden}
+.app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;position:relative}
+.screen{flex:1;overflow-y:auto;padding:0 0 120px;display:none}
+.screen.active{display:block}
+
+/* NAV BAS */
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--card);border-top:1px solid var(--border);display:flex;z-index:100;padding:4px 0 0}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 4px;border:none;background:none;color:var(--muted);font-family:var(--fb);font-size:9px;font-weight:500;cursor:pointer;transition:color .2s}
+.nav-btn.active{color:var(--blue)}
+.nav-icon{font-size:18px;line-height:1}
+
+/* HEADER */
+.page-header{padding:10px 16px 8px;position:sticky;top:0;background:var(--dark);z-index:10;border-bottom:1px solid var(--border)}
+
+/* SWIMMER SELECTOR */
+.swimmer-bar{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.swimmer-btn{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:999px;padding:5px 12px 5px 6px;cursor:pointer;flex:1;min-width:0}
+.swimmer-avatar{width:26px;height:26px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:13px;color:#fff;flex-shrink:0}
+.swimmer-name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.swimmer-arrow{margin-left:auto;color:var(--muted);font-size:12px}
+.header-sub{font-size:11px;color:var(--muted)}
+
+/* SWIMMER MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-sheet{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:430px;padding:16px;max-height:80vh;overflow-y:auto}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px}
+.modal-title{font-family:var(--fd);font-size:20px;margin-bottom:12px}
+.swimmer-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.swimmer-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border);cursor:pointer;transition:border-color .15s}
+.swimmer-row.active-sw{border-color:var(--blue)}
+.sw-avatar-lg{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:16px;color:#fff;flex-shrink:0}
+.sw-info{flex:1;min-width:0}
+.sw-info-name{font-weight:600;font-size:14px}
+.sw-info-count{font-size:11px;color:var(--muted)}
+.sw-del{background:none;border:none;color:var(--red);font-size:18px;cursor:pointer;padding:4px 8px}
+.sw-check{color:var(--blue);font-size:16px;margin-left:4px}
+.add-swimmer-form{display:flex;gap:8px;margin-bottom:12px}
+.add-swimmer-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:var(--fb);font-size:14px;outline:none}
+.add-swimmer-input:focus{border-color:var(--blue)}
+.btn-add-sw{background:var(--blue);border:none;border-radius:10px;padding:10px 16px;color:#fff;font-family:var(--fd);font-size:16px;cursor:pointer;white-space:nowrap}
+.btn-close-modal{width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);color:var(--muted);font-family:var(--fb);font-size:14px;cursor:pointer}
+
+/* CHIPS */
+.filter-row{display:flex;align-items:center;gap:8px;padding:5px 16px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.filter-row::-webkit-scrollbar{display:none}
+.filter-row-label{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;width:44px;flex-shrink:0}
+.filters{display:flex;gap:8px;overflow-x:auto;padding:8px 16px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.filter-group{display:flex;gap:6px;flex-shrink:0}
+.chip{padding:5px 12px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+.chip.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.sep{width:1px;background:var(--border);flex-shrink:0;margin:3px 0}
+
+/* RÉSULTATS */
+.results-list{padding:0 16px;display:flex;flex-direction:column;gap:8px}
+.result-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px}
+.rc-badge{width:44px;height:44px;border-radius:10px;background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+.rc-dist{font-family:var(--fd);font-size:16px;color:var(--blue);line-height:1}
+.rc-unit{font-size:8px;color:var(--muted);text-transform:uppercase}
+.rc-body{flex:1;min-width:0}
+.rc-top{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.rc-nage{font-weight:600;font-size:13px}
+.rc-niveau{font-size:10px;padding:1px 6px;border-radius:4px}
+.rc-niveau.dep{color:#60A5FA;background:#1e3a5f}
+.rc-niveau.reg{color:var(--green);background:#0d3324}
+.rc-niveau.nat{color:var(--amber);background:#3a2a00}
+.rc-bottom{display:flex;gap:10px;font-size:11px;color:var(--muted)}
+.rc-right{text-align:right;flex-shrink:0}
+.rc-temps{font-family:var(--fd);font-size:20px;color:var(--text);letter-spacing:.5px}
+.rc-pts{font-size:11px}
+.no-results{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px}
+
+/* SAISIE */
+.form-wrap{padding:0 16px}
+.form-field{margin-bottom:14px}
+.form-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;display:block}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-input,.form-select{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-family:var(--fb);font-size:14px;outline:none;transition:border-color .2s;-webkit-appearance:none}
+.form-input:focus,.form-select:focus{border-color:var(--blue)}
+.form-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7394' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.form-select option{background:var(--card)}
+.chip-grid{display:flex;flex-wrap:wrap;gap:6px}
+.chip-sel{padding:7px 14px;border-radius:999px;border:1px solid var(--border);background:none;color:var(--muted);font-family:var(--fb);font-size:12px;cursor:pointer;transition:all .15s}
+.chip-sel.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn-submit{width:100%;padding:14px;border-radius:var(--r);background:var(--blue);color:#fff;font-family:var(--fd);font-size:18px;letter-spacing:1px;border:none;cursor:pointer;margin-top:4px}
+.btn-submit:active{background:var(--blue-dark)}
+
+/* IMPORT/EXPORT */
+.io-section{padding:0 16px;margin-bottom:16px}
+.io-title{font-family:var(--fd);font-size:16px;color:var(--muted);letter-spacing:.5px;margin-bottom:10px}
+.io-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn-io{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);cursor:pointer;font-family:var(--fb);color:var(--text);font-size:12px;font-weight:500}
+.btn-io span:first-child{font-size:24px}
+.btn-io.export{border-color:#1D9E75;color:#1D9E75}
+.btn-io.import{border-color:var(--amber);color:var(--amber)}
+.btn-io.export-all{border-color:#60A5FA;color:#60A5FA}
+
+/* GRAPHIQUE */
+.graph-wrap{padding:0 16px}
+.graph-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rr);padding:14px;margin-bottom:14px}
+.graph-title{font-family:var(--fd);font-size:14px;letter-spacing:.5px;color:var(--muted);margin-bottom:10px}
+.chart-container{position:relative;height:260px;width:100%}
+.legend-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+.stat-label{font-size:10px;color:var(--muted);margin-bottom:3px}
+.stat-val{font-family:var(--fd);font-size:22px;color:var(--text)}
+.stat-sub{font-size:10px;color:var(--muted)}
+
+
+
+
+/* RECORDS */
+.nage-selector{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.nage-badge{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:var(--fd);font-size:15px;letter-spacing:1px;cursor:pointer;transition:all .15s;min-width:52px;text-align:center}
+.nage-badge.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.records-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.record-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:10px 8px;text-align:center}
+.record-box-dist{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.record-box-time{font-family:var(--fd);font-size:20px;color:var(--text);letter-spacing:.5px;line-height:1.1}
+.record-box-pts{font-size:10px;color:var(--amber);margin-top:2px}
+.record-box-meet{font-size:9px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.record-box.empty .record-box-time{font-size:14px;color:var(--muted)}
+
+
+/* MODAL DÉTAIL PERFORMANCE */
+.detail-header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.detail-badge{width:56px;height:56px;border-radius:12px;background:var(--blue);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+.detail-badge-dist{font-family:var(--fd);font-size:22px;color:#fff;line-height:1}
+.detail-badge-unit{font-size:9px;color:rgba(255,255,255,.7);text-transform:uppercase}
+.detail-temps-big{font-family:var(--fd);font-size:42px;color:var(--text);letter-spacing:1px;line-height:1;margin-bottom:4px}
+.detail-nage{font-size:14px;color:var(--muted);font-weight:500}
+.detail-fields{display:flex;flex-direction:column;gap:0}
+.detail-field{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)}
+.detail-field:last-child{border-bottom:none}
+.detail-field-icon{width:28px;font-size:16px;flex-shrink:0}
+.detail-field-label{font-size:11px;color:var(--muted);width:90px;flex-shrink:0}
+.detail-field-val{flex:1;font-size:14px;font-weight:500;color:var(--text)}
+.detail-pts-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-family:var(--fd);font-size:16px;letter-spacing:.5px}
+.detail-lien{color:var(--blue);font-size:12px;text-decoration:none;word-break:break-all}
+.detail-actions{display:flex;gap:8px;margin-top:18px}
+.btn-detail-edit{flex:1;padding:12px;border-radius:var(--r);background:var(--blue);color:#fff;font-family:var(--fd);font-size:16px;letter-spacing:.5px;border:none;cursor:pointer}
+.btn-detail-close{flex:1;padding:12px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--fd);font-size:16px;letter-spacing:.5px;cursor:pointer}
+
+/* ÉDITION RÉSULTAT */
+.rc-edit-btn{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:4px 6px;margin-left:4px;border-radius:6px;transition:color .15s}
+.rc-edit-btn:active{color:var(--blue)}
+
+/* PROFIL NAGEUR */
+.profile-wrap{padding:0 16px}
+.profile-avatar-zone{display:flex;flex-direction:column;align-items:center;padding:20px 0 16px;gap:10px}
+.profile-avatar-big{width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:40px;color:#fff}
+.profile-name-display{font-family:var(--fd);font-size:28px;letter-spacing:1px}
+.profile-subtitle{font-size:12px;color:var(--muted)}
+.profile-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rr);padding:16px;margin-bottom:14px}
+.profile-card-title{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+.profile-field{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.profile-field:last-child{border-bottom:none}
+.profile-field-label{font-size:12px;color:var(--muted);width:110px;flex-shrink:0}
+.profile-field-val{flex:1;font-size:14px;color:var(--text);font-weight:500}
+.profile-field-val.empty{color:var(--muted);font-weight:400;font-style:italic}
+.btn-edit-profile{width:100%;padding:13px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--fd);font-size:17px;letter-spacing:1px;cursor:pointer;margin-bottom:10px}
+.btn-danger{width:100%;padding:13px;border-radius:var(--r);background:none;border:1px solid var(--red);color:var(--red);font-family:var(--fd);font-size:17px;letter-spacing:1px;cursor:pointer}
+.stat-row{display:flex;justify-content:space-around;padding:8px 0}
+.stat-item{text-align:center}
+.stat-item-val{font-family:var(--fd);font-size:26px;color:var(--text)}
+.stat-item-label{font-size:10px;color:var(--muted)}
+.color-picker-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.color-dot{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:border-color .15s}
+.color-dot.selected{border-color:var(--text)}
+
+/* TOAST */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--green);color:#fff;padding:10px 22px;border-radius:999px;font-weight:600;font-size:13px;z-index:999;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ÉCRAN RÉSULTATS -->
+<div class="screen active" id="screen-results">
+  <div class="page-header">
+    <div class="swimmer-bar">
+      <button class="swimmer-btn" id="sw-btn-results" onclick="openModal()">
+        <div class="swimmer-avatar" id="sw-avatar-results">H</div>
+        <span class="swimmer-name" id="sw-name-results">Hugo</span>
+        <span class="swimmer-arrow">▼</span>
+      </button>
+      <span id="sync-status" title="Synchronisation" style="font-size:16px;cursor:default;margin-left:4px">☁️</span>
+    </div>
+    <div class="header-sub" id="results-count">0 résultats</div>
+  </div>
+  <div style="border-bottom:1px solid var(--border)">
+    <div class="filter-row">
+      <div class="filter-row-label">Nage</div>
+      <div class="filter-group" id="fg-nage"></div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-row-label">Distance</div>
+      <div class="filter-group" id="fg-dist"></div>
+    </div>
+    <div class="filter-row" style="border-bottom:none">
+      <div class="filter-row-label">Filtres</div>
+      <div class="filter-group" id="fg-bassin"></div>
+      <div class="sep" style="height:20px;margin:0 2px"></div>
+      <div class="filter-group" id="fg-niveau"></div>
+    </div>
+  </div>
+  <div class="results-list" id="results-list"></div>
+</div>
+
+<!-- ÉCRAN SAISIE -->
+<div class="screen" id="screen-add">
+  <div class="page-header">
+    <div class="swimmer-bar">
+      <button class="swimmer-btn" onclick="openModal()">
+        <div class="swimmer-avatar" id="sw-avatar-add">H</div>
+        <span class="swimmer-name" id="sw-name-add">Hugo</span>
+        <span class="swimmer-arrow">▼</span>
+      </button>
+    </div>
+    <div class="header-sub">Nouvelle performance</div>
+  </div>
+  <div class="form-wrap">
+    <div class="form-field">
+      <label class="form-label">Distance</label>
+      <div class="chip-grid" id="form-dist">
+        <button class="chip-sel" data-val="50">50 m</button>
+        <button class="chip-sel" data-val="100">100 m</button>
+        <button class="chip-sel" data-val="200">200 m</button>
+        <button class="chip-sel" data-val="400">400 m</button>
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-label">Nage</label>
+      <div class="chip-grid" id="form-nage">
+        <button class="chip-sel" data-val="NL">NL</button>
+        <button class="chip-sel" data-val="Dos">Dos</button>
+        <button class="chip-sel" data-val="Bra.">Bra.</button>
+        <button class="chip-sel" data-val="Pap.">Pap.</button>
+        <button class="chip-sel" data-val="4 N.">4 N.</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">Temps (m:ss.cc)</label>
+        <input class="form-input" id="form-temps" placeholder="1:04.83" type="text" inputmode="decimal">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Points</label>
+        <input class="form-input" id="form-pts" placeholder="788" type="text" inputmode="numeric">
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-label">Meeting</label>
+      <input class="form-input" id="form-meeting" placeholder="VERSAILLES" type="text">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Date</label>
+      <input class="form-input" id="form-date" type="date">
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">Niveau</label>
+        <select class="form-select" id="form-niveau">
+          <option value="[DEP]">Départemental</option>
+          <option value="[REG]">Régional</option>
+          <option value="[NAT]">National</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Bassin</label>
+        <select class="form-select" id="form-bassin">
+          <option value="25 mètres">25 m</option>
+          <option value="50 mètres">50 m</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">Âge</label>
+        <input class="form-input" id="form-age" placeholder="(14 ans)" type="text">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Club</label>
+        <input class="form-input" id="form-club" placeholder="CN PLAISIR" type="text">
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-label">Lien résultats (optionnel)</label>
+      <input class="form-input" id="form-lien" placeholder="https://ffn.extranat.fr/..." type="url">
+    </div>
+    <button class="btn-submit" id="btn-submit">ENREGISTRER</button>
+
+    <div style="height:20px"></div>
+    <div class="io-title" style="margin-top:8px">DONNÉES</div>
+    <div class="io-row" style="margin-bottom:10px">
+      <button class="btn-io export" onclick="exportCSV(false)"><span>⬇️</span>Exporter nageur</button>
+      <button class="btn-io export-all" onclick="exportCSV(true)"><span>⬇️</span>Exporter tous</button>
+    </div>
+    <div class="io-row">
+      <button class="btn-io import" onclick="document.getElementById('csv-import').click()"><span>⬆️</span>Importer CSV</button>
+      <div></div>
+    </div>
+    <input type="file" id="csv-import" accept=".csv" style="display:none" onchange="importCSV(event)">
+  </div>
+</div>
+
+<!-- ÉCRAN COURBES -->
+<div class="screen" id="screen-chart">
+  <div class="page-header">
+    <div class="swimmer-bar">
+      <button class="swimmer-btn" onclick="openModal()">
+        <div class="swimmer-avatar" id="sw-avatar-chart">H</div>
+        <span class="swimmer-name" id="sw-name-chart">Hugo</span>
+        <span class="swimmer-arrow">▼</span>
+      </button>
+    </div>
+    <div class="header-sub">Progression des chronos</div>
+  </div>
+  <div class="graph-wrap">
+    <div class="filters" id="filters-graph" style="padding:8px 0;margin-bottom:8px">
+      <div class="filter-group" id="gg-dist"></div>
+      <div class="sep" style="height:26px"></div>
+      <div class="filter-group" id="gg-nage"></div>
+    </div>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="graph-card">
+      <div class="graph-title" id="graph-title">CHRONOS PAR DATE</div>
+      <div class="chart-container"><canvas id="myChart" role="img" aria-label="Courbes des chronos"></canvas></div>
+      <div class="legend-wrap" id="chart-legend"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ÉCRAN PROFIL NAGEUR -->
+<div class="screen" id="screen-profile">
+  <div class="page-header">
+    <div class="swimmer-bar">
+      <button class="swimmer-btn" onclick="openModal()">
+        <div class="swimmer-avatar" id="sw-avatar-profile">H</div>
+        <span class="swimmer-name" id="sw-name-profile">Hugo</span>
+        <span class="swimmer-arrow">▼</span>
+      </button>
+    </div>
+    <div class="header-sub">Fiche nageur</div>
+  </div>
+  <div class="profile-wrap">
+    <div class="profile-avatar-zone">
+      <div class="profile-avatar-big" id="profile-avatar-big">H</div>
+      <div class="profile-name-display" id="profile-name-display">Hugo</div>
+      <div class="profile-subtitle" id="profile-subtitle">— résultats</div>
+    </div>
+
+    <div class="profile-card">
+      <div class="profile-card-title">Statistiques</div>
+      <div class="stat-row" id="profile-stats"></div>
+    </div>
+
+    <div class="profile-card">
+      <div class="profile-card-title">Records personnels</div>
+      <div class="nage-selector" id="records-nage-selector"></div>
+      <div class="records-grid" id="records-grid"></div>
+    </div>
+
+    <div class="profile-card">
+      <div class="profile-card-title">Informations</div>
+      <div class="profile-field"><span class="profile-field-label">Nom complet</span><span class="profile-field-val" id="pf-nom">—</span></div>
+      <div class="profile-field"><span class="profile-field-label">Date de naissance</span><span class="profile-field-val" id="pf-naissance">—</span></div>
+      <div class="profile-field"><span class="profile-field-label">Club</span><span class="profile-field-val" id="pf-club">—</span></div>
+      <div class="profile-field"><span class="profile-field-label">Licence FFN</span><span class="profile-field-val" id="pf-licence">—</span></div>
+      <div class="profile-field"><span class="profile-field-label">Groupe</span><span class="profile-field-val" id="pf-groupe">—</span></div>
+      <div class="profile-field"><span class="profile-field-label">Entraîneur</span><span class="profile-field-val" id="pf-entraineur">—</span></div>
+    </div>
+
+    <button class="btn-edit-profile" onclick="openEditProfile()">✏️ MODIFIER LA FICHE</button>
+    <button class="btn-danger" onclick="confirmDeleteSwimmer()">🗑 SUPPRIMER CE NAGEUR</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- MODAL ÉDITION PROFIL -->
+<div class="modal-overlay" id="profile-modal" onclick="closeProfileModalOutside(event)">
+  <div class="modal-sheet" style="max-height:92vh">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Modifier la fiche</div>
+    <div class="form-field">
+      <label class="form-label">Prénom (identifiant)</label>
+      <input class="form-input" id="pe-prenom" placeholder="Hugo" type="text">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Nom complet</label>
+      <input class="form-input" id="pe-nom" placeholder="Hugo Dupont" type="text">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Date de naissance</label>
+      <input class="form-input" id="pe-naissance" type="date">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Club</label>
+      <input class="form-input" id="pe-club" placeholder="CN PLAISIR" type="text">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Licence FFN</label>
+      <input class="form-input" id="pe-licence" placeholder="123456A" type="text">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Groupe d'entraînement</label>
+      <input class="form-input" id="pe-groupe" placeholder="Compétition" type="text">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Entraîneur</label>
+      <input class="form-input" id="pe-entraineur" placeholder="Jean Martin" type="text">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Couleur</label>
+      <div class="color-picker-row" id="color-picker"></div>
+    </div>
+    <button class="btn-submit" onclick="saveProfile()" style="margin-bottom:10px">ENREGISTRER</button>
+    <button class="btn-close-modal" onclick="closeProfileModal()">Annuler</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <button class="nav-btn active" data-screen="results"><span class="nav-icon">🏊</span>Résultats</button>
+  <button class="nav-btn" data-screen="add"><span class="nav-icon">➕</span>Saisie</button>
+  <button class="nav-btn" data-screen="chart"><span class="nav-icon">📈</span>Courbes</button>
+  <button class="nav-btn" data-screen="profile"><span class="nav-icon">👤</span>Nageur</button>
+</nav>
+</div>
+
+
+<!-- MODAL ÉDITION RÉSULTAT -->
+<div class="modal-overlay" id="edit-modal" onclick="closeEditModalOutside(event)">
+  <div class="modal-sheet" style="max-height:92vh">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Modifier le résultat</div>
+    <div class="form-field">
+      <label class="form-label">Distance</label>
+      <div class="chip-grid" id="edit-dist">
+        <button class="chip-sel" data-val="50">50 m</button>
+        <button class="chip-sel" data-val="100">100 m</button>
+        <button class="chip-sel" data-val="200">200 m</button>
+        <button class="chip-sel" data-val="400">400 m</button>
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-label">Nage</label>
+      <div class="chip-grid" id="edit-nage">
+        <button class="chip-sel" data-val="NL">NL</button>
+        <button class="chip-sel" data-val="Dos">Dos</button>
+        <button class="chip-sel" data-val="Bra.">Bra.</button>
+        <button class="chip-sel" data-val="Pap.">Pap.</button>
+        <button class="chip-sel" data-val="4 N.">4 N.</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">Temps</label>
+        <input class="form-input" id="edit-temps" type="text" inputmode="decimal">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Points</label>
+        <input class="form-input" id="edit-pts" type="text" inputmode="numeric">
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-label">Meeting</label>
+      <input class="form-input" id="edit-meeting" type="text">
+    </div>
+    <div class="form-field">
+      <label class="form-label">Date</label>
+      <input class="form-input" id="edit-date" type="date">
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">Niveau</label>
+        <select class="form-select" id="edit-niveau">
+          <option value="[DEP]">Départemental</option>
+          <option value="[REG]">Régional</option>
+          <option value="[NAT]">National</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Bassin</label>
+        <select class="form-select" id="edit-bassin">
+          <option value="25 mètres">25 m</option>
+          <option value="50 mètres">50 m</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field">
+        <label class="form-label">Âge</label>
+        <input class="form-input" id="edit-age" type="text">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Club</label>
+        <input class="form-input" id="edit-club" type="text">
+      </div>
+    </div>
+    <div class="form-field">
+      <label class="form-label">Lien résultats</label>
+      <input class="form-input" id="edit-lien" type="url">
+    </div>
+    <button class="btn-submit" onclick="saveEdit()" style="margin-bottom:10px">ENREGISTRER</button>
+    <button class="btn-danger" onclick="deleteResult()" style="margin-bottom:10px">🗑 SUPPRIMER CE RÉSULTAT</button>
+    <button class="btn-close-modal" onclick="closeEditModal()">Annuler</button>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- MODAL DÉTAIL PERFORMANCE -->
+<div class="modal-overlay" id="detail-modal" onclick="closeDetailModalOutside(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="detail-header">
+      <div class="detail-badge" id="detail-badge">
+        <div class="detail-badge-dist" id="detail-dist">50</div>
+        <div class="detail-badge-unit">m</div>
+      </div>
+      <div>
+        <div class="detail-temps-big" id="detail-temps">00:28.88</div>
+        <div class="detail-nage" id="detail-nage">NL</div>
+      </div>
+    </div>
+    <div class="detail-fields">
+      <div class="detail-field">
+        <div class="detail-field-icon">🏆</div>
+        <div class="detail-field-label">Points</div>
+        <div class="detail-field-val"><span class="detail-pts-badge" id="detail-pts">—</span></div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-icon">📅</div>
+        <div class="detail-field-label">Date</div>
+        <div class="detail-field-val" id="detail-date">—</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-icon">📍</div>
+        <div class="detail-field-label">Meeting</div>
+        <div class="detail-field-val" id="detail-meeting">—</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-icon">🥇</div>
+        <div class="detail-field-label">Niveau</div>
+        <div class="detail-field-val" id="detail-niveau">—</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-icon">🏊</div>
+        <div class="detail-field-label">Bassin</div>
+        <div class="detail-field-val" id="detail-bassin">—</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-icon">👤</div>
+        <div class="detail-field-label">Âge</div>
+        <div class="detail-field-val" id="detail-age">—</div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-icon">🏟</div>
+        <div class="detail-field-label">Club</div>
+        <div class="detail-field-val" id="detail-club">—</div>
+      </div>
+      <div class="detail-field" id="detail-lien-row" style="display:none">
+        <div class="detail-field-icon">🔗</div>
+        <div class="detail-field-label">Résultats</div>
+        <div class="detail-field-val"><a class="detail-lien" id="detail-lien" href="#" target="_blank">Voir sur FFN</a></div>
+      </div>
+    </div>
+    <div class="detail-actions">
+      <button class="btn-detail-edit" id="detail-edit-btn">✏️ MODIFIER</button>
+      <button class="btn-detail-close" onclick="closeDetailModal()">FERMER</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NAGEURS -->
+<div class="modal-overlay" id="sw-modal" onclick="closeModalOutside(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Nageurs</div>
+    <div class="swimmer-list" id="swimmer-list"></div>
+    <div class="add-swimmer-form">
+      <input class="add-swimmer-input" id="new-sw-input" placeholder="Prénom du nageur" type="text">
+      <button class="btn-add-sw" onclick="addSwimmer()">+ Ajouter</button>
+    </div>
+    <button class="btn-close-modal" onclick="closeModal()">Fermer</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'natation_app_v4';
+const HUGO_DATA = [
+  {dist:200,nage:"NL",temps:"03:05.27",age:"(12 ans)",pts:"278",meeting:"VERSAILLES",date:"2024-02-03",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Pap.",temps:"00:43.58",age:"(12 ans)",pts:"271",meeting:"VERSAILLES",date:"2024-02-03",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"NL",temps:"00:36.37",age:"(12 ans)",pts:"459",meeting:"VERSAILLES",date:"2024-02-04",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Bra.",temps:"00:48.38",age:"(12 ans)",pts:"376",meeting:"VERSAILLES",date:"2024-02-04",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"Bra.",temps:"01:47.98",age:"(12 ans)",pts:"311",meeting:"VERSAILLES",date:"2024-02-04",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"NL",temps:"01:24.03",age:"(12 ans)",pts:"342",meeting:"MANTES-LA-VILLE",date:"2024-03-16",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"Bra.",temps:"01:47.53",age:"(12 ans)",pts:"317",meeting:"MANTES-LA-VILLE",date:"2024-03-16",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:200,nage:"NL",temps:"02:58.17",age:"(12 ans)",pts:"340",meeting:"MANTES-LA-VILLE",date:"2024-03-17",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:200,nage:"NL",temps:"02:49.36",age:"(12 ans)",pts:"426",meeting:"CHEVREUSE",date:"2024-11-10",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:200,nage:"4 N.",temps:"03:12.21",age:"(12 ans)",pts:"396",meeting:"CHEVREUSE",date:"2024-11-10",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"NL",temps:"00:34.03",age:"(12 ans)",pts:"568",meeting:"CHEVREUSE",date:"2024-11-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"NL",temps:"01:19.27",age:"(12 ans)",pts:"435",meeting:"CHEVREUSE",date:"2024-11-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"Bra.",temps:"01:34.57",age:"(12 ans)",pts:"523",meeting:"CHEVREUSE",date:"2024-11-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"NL",temps:"01:18.08",age:"(12 ans)",pts:"460",meeting:"SARCELLES",date:"2024-12-01",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"Bra.",temps:"01:35.04",age:"(12 ans)",pts:"515",meeting:"SARCELLES",date:"2024-12-01",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"NL",temps:"00:32.74",age:"(13 ans)",pts:"634",meeting:"PORCHEVILLE",date:"2025-01-26",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Bra.",temps:"00:42.15",age:"(13 ans)",pts:"590",meeting:"PORCHEVILLE",date:"2025-01-26",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"Bra.",temps:"01:32.75",age:"(13 ans)",pts:"556",meeting:"PORCHEVILLE",date:"2025-01-26",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:200,nage:"4 N.",temps:"03:07.10",age:"(13 ans)",pts:"442",meeting:"PORCHEVILLE",date:"2025-01-26",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Bra.",temps:"00:43.33",age:"(13 ans)",pts:"546",meeting:"SARTROUVILLE",date:"2025-03-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+  {dist:100,nage:"Bra.",temps:"01:36.96",age:"(13 ans)",pts:"481",meeting:"SARTROUVILLE",date:"2025-03-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+  {dist:50,nage:"NL",temps:"00:31.85",age:"(13 ans)",pts:"681",meeting:"SARTROUVILLE",date:"2025-03-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+  {dist:200,nage:"4 N.",temps:"03:08.44",age:"(13 ans)",pts:"430",meeting:"SARTROUVILLE",date:"2025-03-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+  {dist:200,nage:"NL",temps:"02:58.24",age:"(13 ans)",pts:"340",meeting:"SARTROUVILLE",date:"2025-03-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+  {dist:50,nage:"Pap.",temps:"00:35.97",age:"(13 ans)",pts:"578",meeting:"SARTROUVILLE",date:"2025-03-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+  {dist:50,nage:"NL",temps:"00:30.30",age:"(13 ans)",pts:"768",meeting:"CHEVREUSE",date:"2025-05-10",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Pap.",temps:"00:34.56",age:"(13 ans)",pts:"647",meeting:"CHEVREUSE",date:"2025-05-10",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Bra.",temps:"00:41.49",age:"(13 ans)",pts:"615",meeting:"CHEVREUSE",date:"2025-05-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"Bra.",temps:"01:31.72",age:"(13 ans)",pts:"576",meeting:"CHEVREUSE",date:"2025-05-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"NL",temps:"00:30.84",age:"(13 ans)",pts:"737",meeting:"CHATOU",date:"2025-06-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Bra.",temps:"00:41.53",age:"(13 ans)",pts:"614",meeting:"CHATOU",date:"2025-06-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Pap.",temps:"00:33.70",age:"(13 ans)",pts:"691",meeting:"CHATOU",date:"2025-06-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Pap.",temps:"00:34.45",age:"(13 ans)",pts:"653",meeting:"TAVERNY",date:"2025-06-28",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+  {dist:50,nage:"NL",temps:"00:30.03",age:"(13 ans)",pts:"783",meeting:"ATTICHY",date:"2025-06-29",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"NL",temps:"01:11.98",age:"(13 ans)",pts:"600",meeting:"ATTICHY",date:"2025-06-29",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Pap.",temps:"00:34.97",age:"(13 ans)",pts:"626",meeting:"ATTICHY",date:"2025-06-29",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Pap.",temps:"00:31.08",age:"(13 ans)",pts:"835",meeting:"RAMBOUILLET",date:"2025-11-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:200,nage:"4 N.",temps:"02:49.38",age:"(13 ans)",pts:"623",meeting:"RAMBOUILLET",date:"2025-11-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"NL",temps:"00:29.33",age:"(13 ans)",pts:"825",meeting:"RAMBOUILLET",date:"2025-11-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"NL",temps:"01:07.37",age:"(13 ans)",pts:"719",meeting:"RAMBOUILLET",date:"2025-11-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Pap.",temps:"00:31.61",age:"(13 ans)",pts:"805",meeting:"SARCELLES",date:"2025-11-29",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"NL",temps:"00:28.92",age:"(13 ans)",pts:"849",meeting:"SARCELLES",date:"2025-11-30",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"NL",temps:"01:06.97",age:"(13 ans)",pts:"729",meeting:"SARCELLES",date:"2025-11-30",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Pap.",temps:"00:30.79",age:"(14 ans)",pts:"852",meeting:"HOUILLES",date:"2026-01-31",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"Pap.",temps:"01:18.67",age:"(14 ans)",pts:"629",meeting:"HOUILLES",date:"2026-01-31",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"NL",temps:"00:29.63",age:"(14 ans)",pts:"807",meeting:"MANTES-LA-VILLE",date:"2026-02-01",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"NL",temps:"01:06.99",age:"(14 ans)",pts:"729",meeting:"MANTES-LA-VILLE",date:"2026-02-01",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"NL",temps:"00:28.91",age:"(14 ans)",pts:"850",meeting:"PARIS",date:"2026-02-15",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Pap.",temps:"00:30.37",age:"(14 ans)",pts:"876",meeting:"PARIS",date:"2026-02-15",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"NL",temps:"00:33.61",age:"(14 ans)",pts:"589",meeting:"VERSAILLES",date:"2026-03-14",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"NL",temps:"01:04.83",age:"(14 ans)",pts:"788",meeting:"VERSAILLES",date:"2026-03-14",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Dos",temps:"00:33.02",age:"(14 ans)",pts:"835",meeting:"GUYANCOURT",date:"2026-03-15",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:100,nage:"Pap.",temps:"01:13.90",age:"(14 ans)",pts:"736",meeting:"GUYANCOURT",date:"2026-03-15",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"NL",temps:"00:28.88",age:"(14 ans)",pts:"852",meeting:"MONTREUIL",date:"2026-03-28",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+  {dist:50,nage:"Pap.",temps:"00:30.18",age:"(14 ans)",pts:"888",meeting:"MONTREUIL",date:"2026-03-29",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+];
+
+// ── STORAGE ──────────────────────────────────────────────────────────────────
+const AVATAR_COLORS = ['#0057FF','#00D97E','#FF4D6A','#FFB800','#A78BFA','#38BDF8','#FB923C'];
+
+const SIMON_DATA = [
+{dist:50,nage:"NL",temps:"00:28.91",age:"(14 ans)",pts:"850",meeting:"MONTREUIL",date:"2026-03-28",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:28.70",age:"(14 ans)",pts:"863",meeting:"VERSAILLES",date:"2026-03-14",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:29.63",age:"(14 ans)",pts:"807",meeting:"MANTES-LA-VILLE",date:"2026-02-01",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:29.43",age:"(13 ans)",pts:"819",meeting:"SARCELLES",date:"2025-11-30",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:30.03",age:"(13 ans)",pts:"783",meeting:"RAMBOUILLET",date:"2025-11-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:30.82",age:"(13 ans)",pts:"738",meeting:"CHATOU",date:"2025-06-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:30.81",age:"(13 ans)",pts:"739",meeting:"CHEVREUSE",date:"2025-05-10",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:31.19",age:"(13 ans)",pts:"718",meeting:"CHEVREUSE",date:"2025-05-10",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:34.27",age:"(13 ans)",pts:"557",meeting:"PORCHEVILLE",date:"2025-01-26",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:35.05",age:"(12 ans)",pts:"519",meeting:"CHEVREUSE",date:"2024-11-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:16.41",age:"(14 ans)",pts:"497",meeting:"VERSAILLES",date:"2026-03-14",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:09.03",age:"(14 ans)",pts:"675",meeting:"MANTES-LA-VILLE",date:"2026-02-01",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:11.31",age:"(13 ans)",pts:"617",meeting:"RAMBOUILLET",date:"2025-11-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:18.73",age:"(13 ans)",pts:"446",meeting:"CHATOU",date:"2025-06-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:15.32",age:"(13 ans)",pts:"521",meeting:"CHEVREUSE",date:"2025-05-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:21.65",age:"(12 ans)",pts:"387",meeting:"CHEVREUSE",date:"2024-11-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:24.46",age:"(12 ans)",pts:"334",meeting:"VERSAILLES",date:"2024-06-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:30.72",age:"(12 ans)",pts:"229",meeting:"VERSAILLES",date:"2024-02-04",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:200,nage:"NL",temps:"03:10.37",age:"(12 ans)",pts:"237",meeting:"CHEVREUSE",date:"2024-11-10",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:200,nage:"NL",temps:"03:11.95",age:"(12 ans)",pts:"225",meeting:"VERSAILLES",date:"2024-06-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:200,nage:"NL",temps:"03:19.16",age:"(12 ans)",pts:"174",meeting:"MANTES-LA-VILLE",date:"2024-03-17",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:200,nage:"NL",temps:"03:24.56",age:"(12 ans)",pts:"140",meeting:"VERSAILLES",date:"2024-02-03",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:32.84",age:"(14 ans)",pts:"845",meeting:"MONTREUIL",date:"2026-03-28",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:33.15",age:"(14 ans)",pts:"829",meeting:"GUYANCOURT",date:"2026-03-15",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:33.88",age:"(14 ans)",pts:"793",meeting:"HOUILLES",date:"2026-01-31",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:33.22",age:"(13 ans)",pts:"825",meeting:"SARCELLES",date:"2025-11-29",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:33.99",age:"(13 ans)",pts:"787",meeting:"RAMBOUILLET",date:"2025-11-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:36.01",age:"(13 ans)",pts:"691",meeting:"CHEVREUSE",date:"2025-05-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:37.54",age:"(13 ans)",pts:"622",meeting:"PORCHEVILLE",date:"2025-01-26",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:38.69",age:"(12 ans)",pts:"573",meeting:"SARCELLES",date:"2024-11-30",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:38.29",age:"(12 ans)",pts:"590",meeting:"CHEVREUSE",date:"2024-11-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:42.33",age:"(12 ans)",pts:"431",meeting:"VERSAILLES",date:"2024-06-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:44.17",age:"(12 ans)",pts:"366",meeting:"VERSAILLES",date:"2024-02-03",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"Dos",temps:"01:12.64",age:"(14 ans)",pts:"780",meeting:"GUYANCOURT",date:"2026-03-15",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"Dos",temps:"01:13.25",age:"(14 ans)",pts:"766",meeting:"HOUILLES",date:"2026-01-31",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"Dos",temps:"01:21.66",age:"(13 ans)",pts:"582",meeting:"CHEVREUSE",date:"2025-05-10",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"Dos",temps:"01:25.53",age:"(13 ans)",pts:"506",meeting:"PORCHEVILLE",date:"2025-01-26",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"Dos",temps:"01:26.58",age:"(12 ans)",pts:"487",meeting:"SARCELLES",date:"2024-11-30",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Bra.",temps:"00:52.79",age:"(12 ans)",pts:"253",meeting:"VERSAILLES",date:"2024-02-04",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"4 N.",temps:"01:42.30",age:"(12 ans)",pts:"225",meeting:"VERSAILLES",date:"2024-06-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:200,nage:"4 N.",temps:"02:53.75",age:"(13 ans)",pts:"576",meeting:"RAMBOUILLET",date:"2025-11-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:200,nage:"4 N.",temps:"03:03.42",age:"(13 ans)",pts:"477",meeting:"CHATOU",date:"2025-06-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:200,nage:"4 N.",temps:"03:17.06",age:"(13 ans)",pts:"354",meeting:"PORCHEVILLE",date:"2025-01-26",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:31.77",age:"(13 ans)",pts:"686",meeting:"SARTROUVILLE",date:"2025-03-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+{dist:100,nage:"NL",temps:"01:15.85",age:"(13 ans)",pts:"509",meeting:"SARTROUVILLE",date:"2025-03-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+{dist:50,nage:"Dos",temps:"00:35.12",age:"(13 ans)",pts:"733",meeting:"TAVERNY",date:"2025-06-28",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+{dist:50,nage:"Dos",temps:"00:36.06",age:"(13 ans)",pts:"689",meeting:"SARTROUVILLE",date:"2025-03-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+{dist:100,nage:"Dos",temps:"01:21.33",age:"(13 ans)",pts:"589",meeting:"TAVERNY",date:"2025-06-28",niveau:"[REG]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+{dist:100,nage:"Dos",temps:"01:24.27",age:"(13 ans)",pts:"531",meeting:"SARTROUVILLE",date:"2025-03-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+{dist:200,nage:"Dos",temps:"03:07.29",age:"(13 ans)",pts:"445",meeting:"SARTROUVILLE",date:"2025-03-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"}
+];
+
+const NOLAN_DATA = [
+{dist:50,nage:"NL",temps:"00:29.09",age:"(18 ans)",pts:"839",meeting:"VERSAILLES",date:"2026-03-14",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:28.98",age:"(18 ans)",pts:"846",meeting:"MANTES-LA-VILLE",date:"2026-02-01",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:29.04",age:"(17 ans)",pts:"842",meeting:"RAMBOUILLET",date:"2025-11-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:29.90",age:"(16 ans)",pts:"791",meeting:"CHEVREUSE",date:"2024-11-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:31.54",age:"(16 ans)",pts:"698",meeting:"VERSAILLES",date:"2024-06-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:31.23",age:"(16 ans)",pts:"715",meeting:"VERSAILLES",date:"2024-06-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:05.64",age:"(18 ans)",pts:"766",meeting:"VERSAILLES",date:"2026-03-14",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:05.61",age:"(18 ans)",pts:"767",meeting:"MANTES-LA-VILLE",date:"2026-02-01",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:05.20",age:"(17 ans)",pts:"778",meeting:"RAMBOUILLET",date:"2025-11-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:08.25",age:"(16 ans)",pts:"695",meeting:"CHEVREUSE",date:"2024-11-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:09.69",age:"(16 ans)",pts:"658",meeting:"VERSAILLES",date:"2024-06-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"NL",temps:"01:12.02",age:"(16 ans)",pts:"599",meeting:"VERSAILLES",date:"2024-02-04",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:200,nage:"NL",temps:"02:32.31",age:"(18 ans)",pts:"620",meeting:"GUYANCOURT",date:"2026-03-15",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:200,nage:"NL",temps:"02:32.14",age:"(17 ans)",pts:"622",meeting:"RAMBOUILLET",date:"2025-11-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:200,nage:"NL",temps:"02:41.81",age:"(16 ans)",pts:"508",meeting:"CHEVREUSE",date:"2024-11-10",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:200,nage:"NL",temps:"02:48.01",age:"(16 ans)",pts:"440",meeting:"VERSAILLES",date:"2024-02-03",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Dos",temps:"00:37.20",age:"(16 ans)",pts:"637",meeting:"CHEVREUSE",date:"2024-11-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Bra.",temps:"00:41.26",age:"(16 ans)",pts:"624",meeting:"VERSAILLES",date:"2024-02-04",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Pap.",temps:"00:32.45",age:"(18 ans)",pts:"758",meeting:"GUYANCOURT",date:"2026-03-15",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Pap.",temps:"00:33.55",age:"(18 ans)",pts:"699",meeting:"HOUILLES",date:"2026-01-31",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Pap.",temps:"00:31.69",age:"(17 ans)",pts:"800",meeting:"RAMBOUILLET",date:"2025-11-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Pap.",temps:"00:32.55",age:"(16 ans)",pts:"753",meeting:"CHEVREUSE",date:"2024-11-11",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Pap.",temps:"00:34.51",age:"(16 ans)",pts:"650",meeting:"VERSAILLES",date:"2024-06-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"Pap.",temps:"00:34.02",age:"(16 ans)",pts:"675",meeting:"VERSAILLES",date:"2024-02-03",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"Pap.",temps:"01:21.18",age:"(18 ans)",pts:"576",meeting:"HOUILLES",date:"2026-01-31",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:100,nage:"4 N.",temps:"01:21.57",age:"(16 ans)",pts:"586",meeting:"VERSAILLES",date:"2024-06-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"25 mètres"},
+{dist:50,nage:"NL",temps:"00:29.63",age:"(17 ans)",pts:"807",meeting:"SARTROUVILLE",date:"2025-03-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+{dist:100,nage:"NL",temps:"01:06.99",age:"(17 ans)",pts:"729",meeting:"SARTROUVILLE",date:"2025-03-08",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+{dist:200,nage:"NL",temps:"02:39.16",age:"(17 ans)",pts:"538",meeting:"SARTROUVILLE",date:"2025-03-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+{dist:50,nage:"Dos",temps:"00:39.29",age:"(17 ans)",pts:"548",meeting:"SARTROUVILLE",date:"2025-03-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"},
+{dist:50,nage:"Pap.",temps:"00:33.17",age:"(17 ans)",pts:"719",meeting:"SARTROUVILLE",date:"2025-03-09",niveau:"[DEP]",lien:"",club:"CN PLAISIR",bassin:"50 mètres"}
+];
+
+// ── ÉTAT LOCAL PAR DÉFAUT ────────────────────────────────────────────────────
+const DEFAULT_STATE = {
+  currentSwimmer: 'Hugo',
+  swimmers: {
+    'Hugo': { color: '#0057FF', data: HUGO_DATA, profile: {} },
+    'Simon': { color: '#00D97E', data: SIMON_DATA, profile: {} },
+    'Nolan': { color: '#FF4D6A', data: NOLAN_DATA, profile: {} }
+  }
+};
+
+function loadState() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) {
+      const state = JSON.parse(s);
+      if (!state.swimmers['Simon']) state.swimmers['Simon'] = { color: '#00D97E', data: SIMON_DATA, profile: {} };
+      if (!state.swimmers['Nolan']) state.swimmers['Nolan'] = { color: '#FF4D6A', data: NOLAN_DATA, profile: {} };
+      if (!state.swimmers['Hugo']) state.swimmers['Hugo'] = { color: '#0057FF', data: HUGO_DATA, profile: {} };
+      return state;
+    }
+  } catch {}
+  return JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+
+// Sync Firebase → local
+let fbUnsubscribe = null;
+
+function saveState() {
+  // Sauvegarde locale
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); } catch {}
+  // Sauvegarde Firebase
+  pushToFirebase();
+}
+
+async function pushToFirebase() {
+  if (!window.firebaseReady) return;
+  try {
+    const docRef = window.fsDoc(window.db, 'app', 'state');
+    // On sauvegarde nageur par nageur pour éviter les conflits de taille
+    const swimmers = {};
+    for (const [name, sw] of Object.entries(STATE.swimmers)) {
+      swimmers[name] = {
+        color: sw.color,
+        profile: sw.profile || {},
+        data: sw.data
+      };
+    }
+    const ts = Date.now();
+    STATE._lastPush = ts;
+    await window.fsSetDoc(docRef, { swimmers, updatedAt: ts });
+  } catch(e) { console.warn('Firebase push error:', e); }
+}
+
+async function pullFromFirebase() {
+  if (!window.firebaseReady) return;
+  try {
+    showSyncStatus('sync');
+    const docRef = window.fsDoc(window.db, 'app', 'state');
+    const snap = await window.fsGetDoc(docRef);
+    if (snap.exists()) {
+      const remote = snap.data();
+      if (remote.swimmers) {
+        // Merger : garder les nageurs locaux + ajouter/màj depuis Firebase
+        for (const [name, sw] of Object.entries(remote.swimmers)) {
+          STATE.swimmers[name] = sw;
+        }
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); } catch {}
+        updateSwimmerUI();
+        refreshFilters('results');
+        refreshFilters('graph');
+        renderProfile();
+        showSyncStatus('ok');
+      }
+    } else {
+      // Première fois : pousser les données locales
+      await pushToFirebase();
+      showSyncStatus('ok');
+    }
+  } catch(e) {
+    console.warn('Firebase pull error:', e);
+    showSyncStatus('error');
+  }
+}
+
+function subscribeFirebase() {
+  if (!window.firebaseReady || fbUnsubscribe) return;
+  try {
+    const docRef = window.fsDoc(window.db, 'app', 'state');
+    fbUnsubscribe = window.fsOnSnapshot(docRef, (snap) => {
+      if (!snap.exists()) return;
+      const remote = snap.data();
+      if (!remote.swimmers) return;
+      // Éviter de se déclencher sur ses propres mises à jour
+      const localTs = STATE._lastPush || 0;
+      if (remote.updatedAt && remote.updatedAt <= localTs + 2000) return;
+      // Appliquer les données distantes
+      for (const [name, sw] of Object.entries(remote.swimmers)) {
+        STATE.swimmers[name] = sw;
+      }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); } catch {}
+      updateSwimmerUI();
+      refreshFilters('results');
+      refreshFilters('graph');
+      if (document.getElementById('screen-profile').classList.contains('active')) renderProfile();
+      showSyncStatus('ok');
+    }, (err) => {
+      console.warn('Firebase snapshot error:', err);
+      showSyncStatus('error');
+    });
+  } catch(e) { console.warn('Firebase subscribe error:', e); }
+}
+
+function showSyncStatus(status) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  if (status === 'sync') { el.textContent = '🔄'; el.title = 'Synchronisation...'; }
+  else if (status === 'ok') { el.textContent = '☁️'; el.title = 'Synchronisé'; }
+  else { el.textContent = '⚠️'; el.title = 'Hors ligne'; }
+}
+
+let STATE = loadState();
+
+function currentData() { return (STATE.swimmers[STATE.currentSwimmer] || {}).data || []; }
+function currentColor() { return (STATE.swimmers[STATE.currentSwimmer] || {}).color || '#0057FF'; }
+
+// ── FILTRES ──────────────────────────────────────────────────────────────────
+const filters = {
+  results: {dist:'all',nage:'all',bassin:'all',niveau:'all'},
+  graph: {dist:'all',nage:'all'}
+};
+
+function buildChips(containerId, values, key, scope) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  const mkBtn = (label, val) => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (filters[scope][key] === val ? ' active' : '');
+    b.textContent = label;
+    b.onclick = () => { filters[scope][key] = val; refreshFilters(scope); };
+    el.appendChild(b);
+  };
+  mkBtn('Tous', 'all');
+  values.forEach(v => mkBtn(v, v));
+}
+
+function refreshFilters(scope) {
+  if (scope === 'results') {
+    buildChips('fg-dist', ['50','100','200','400'], 'dist', 'results');
+    buildChips('fg-nage', ['NL','Dos','Bra.','Pap.','4 N.'], 'nage', 'results');
+    buildChips('fg-bassin', ['25 mètres','50 mètres'], 'bassin', 'results');
+    buildChips('fg-niveau', ['[DEP]','[REG]','[NAT]'], 'niveau', 'results');
+    renderResults();
+  } else {
+    buildChips('gg-dist', ['50','100','200','400'], 'dist', 'graph');
+    buildChips('gg-nage', ['NL','Dos','Bra.','Pap.','4 N.'], 'nage', 'graph');
+    renderChart();
+  }
+}
+
+function getFiltered(scope) {
+  return currentData().filter(d => {
+    const f = filters[scope];
+    if (f.dist !== 'all' && String(d.dist) !== f.dist) return false;
+    if (f.nage !== 'all' && d.nage !== f.nage) return false;
+    if (scope === 'results') {
+      if (f.bassin !== 'all' && d.bassin !== f.bassin) return false;
+      if (f.niveau !== 'all' && d.niveau !== f.niveau) return false;
+    }
+    return true;
+  }).sort((a,b) => new Date(b.date)-new Date(a.date));
+}
+
+// ── RÉSULTATS ────────────────────────────────────────────────────────────────
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+function renderResults() {
+  const list = document.getElementById('results-list');
+  const data = getFiltered('results');
+  document.getElementById('results-count').textContent = data.length + ' résultat' + (data.length !== 1 ? 's' : '');
+  if (!data.length) { list.innerHTML = '<div class="no-results">Aucun résultat</div>'; return; }
+  // On cherche l'index réel dans currentData() pour chaque entrée filtrée
+  const allData = currentData();
+  list.innerHTML = data.map(d => {
+    const realIdx = allData.indexOf(d);
+    const niv = d.niveau === '[REG]' ? 'reg' : d.niveau === '[NAT]' ? 'nat' : 'dep';
+    const pts = parseInt(d.pts) || 0;
+    const ptsColor = pts >= 800 ? 'var(--green)' : pts >= 600 ? 'var(--amber)' : 'var(--muted)';
+    return `<div class="result-card" onclick="openDetailModal(${realIdx})" style="cursor:pointer">
+      <div class="rc-badge"><div class="rc-dist">${d.dist}</div><div class="rc-unit">m</div></div>
+      <div class="rc-body">
+        <div class="rc-top">
+          <span class="rc-nage">${d.nage}</span>
+          <span class="rc-niveau ${niv}">${d.niveau}</span>
+          <span style="font-size:10px;color:var(--muted);margin-left:auto">${d.bassin==='50 mètres'?'50m':'25m'}</span>
+          <button class="rc-edit-btn" onclick="event.stopPropagation();openEditModal(${realIdx})">✏️</button>
+        </div>
+        <div class="rc-bottom">
+          <span>📅 ${fmtDate(d.date)}</span>
+          <span>📍 ${d.meeting}</span>
+        </div>
+      </div>
+      <div class="rc-right">
+        <div class="rc-temps">${d.temps}</div>
+        <div class="rc-pts" style="color:${ptsColor}">${d.pts ? d.pts+' pts' : '—'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── NAGEURS ──────────────────────────────────────────────────────────────────
+function initials(name) { return name.charAt(0).toUpperCase(); }
+
+function updateSwimmerUI() {
+  const name = STATE.currentSwimmer;
+  const color = currentColor();
+  ['results','add','chart','profile'].forEach(id => {
+    const av = document.getElementById('sw-avatar-'+id);
+    const nm = document.getElementById('sw-name-'+id);
+    if (av) { av.textContent = initials(name); av.style.background = color; }
+    if (nm) nm.textContent = name;
+  });
+}
+
+function openModal() {
+  renderSwimmerList();
+  document.getElementById('sw-modal').classList.add('open');
+}
+function closeModal() { document.getElementById('sw-modal').classList.remove('open'); }
+function closeModalOutside(e) { if (e.target === document.getElementById('sw-modal')) closeModal(); }
+
+function renderSwimmerList() {
+  const list = document.getElementById('swimmer-list');
+  list.innerHTML = Object.entries(STATE.swimmers).map(([name, sw]) => {
+    const count = sw.data.length;
+    const isActive = name === STATE.currentSwimmer;
+    return `<div class="swimmer-row ${isActive?'active-sw':''}" onclick="selectSwimmer('${name.replace(/'/g,"\\'")}')">
+      <div class="sw-avatar-lg" style="background:${sw.color}">${initials(name)}</div>
+      <div class="sw-info">
+        <div class="sw-info-name">${name}</div>
+        <div class="sw-info-count">${count} résultat${count!==1?'s':''}</div>
+      </div>
+      ${isActive ? '<span class="sw-check">✓</span>' : ''}
+      ${!isActive ? `<button class="sw-del" onclick="deleteSwimmer(event,'${name.replace(/'/g,"\\'")}')">🗑</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function selectSwimmer(name) {
+  STATE.currentSwimmer = name;
+  saveState();
+  updateSwimmerUI();
+  filters.results = {dist:'all',nage:'all',bassin:'all',niveau:'all'};
+  filters.graph = {dist:'all',nage:'all'};
+  refreshFilters('results');
+  refreshFilters('graph');
+  renderProfile();
+  closeModal();
+}
+
+function addSwimmer() {
+  const input = document.getElementById('new-sw-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (STATE.swimmers[name]) { showToast('Nageur déjà existant'); return; }
+  const colorIdx = Object.keys(STATE.swimmers).length % AVATAR_COLORS.length;
+  STATE.swimmers[name] = { color: AVATAR_COLORS[colorIdx], data: [] };
+  saveState();
+  input.value = '';
+  selectSwimmer(name);
+}
+
+function deleteSwimmer(e, name) {
+  e.stopPropagation();
+  if (!confirm(`Supprimer ${name} et toutes ses données ?`)) return;
+  delete STATE.swimmers[name];
+  saveState();
+  renderSwimmerList();
+}
+
+// ── SAISIE ───────────────────────────────────────────────────────────────────
+function parseSeconds(t) {
+  if (!t) return 0;
+  const parts = t.replace(/^0+:/,'').split(':');
+  if (parts.length === 2) return parseInt(parts[0])*60 + parseFloat(parts[1]);
+  return parseFloat(parts[0]);
+}
+
+function initForm() {
+  document.getElementById('form-date').value = new Date().toISOString().slice(0,10);
+  ['form-dist','form-nage'].forEach(id => {
+    document.getElementById(id).querySelectorAll('.chip-sel').forEach(b => {
+      b.onclick = () => {
+        document.getElementById(id).querySelectorAll('.chip-sel').forEach(x => x.classList.remove('active'));
+        b.classList.add('active');
+      };
+    });
+  });
+  document.getElementById('btn-submit').onclick = submitForm;
+  document.getElementById('new-sw-input').addEventListener('keydown', e => { if (e.key==='Enter') addSwimmer(); });
+}
+
+function submitForm() {
+  const dist = document.querySelector('#form-dist .chip-sel.active')?.dataset.val;
+  const nage = document.querySelector('#form-nage .chip-sel.active')?.dataset.val;
+  const temps = document.getElementById('form-temps').value.trim();
+  const date = document.getElementById('form-date').value;
+  if (!dist || !nage || !temps || !date) { showToast('Remplir Distance, Nage, Temps et Date'); return; }
+  const entry = {
+    dist: parseInt(dist), nage,
+    temps: temps.includes(':') ? temps : '0:'+temps,
+    age: document.getElementById('form-age').value.trim(),
+    pts: document.getElementById('form-pts').value.trim().replace(/[^0-9]/g,''),
+    meeting: document.getElementById('form-meeting').value.trim().toUpperCase(),
+    date,
+    niveau: document.getElementById('form-niveau').value,
+    lien: document.getElementById('form-lien').value.trim(),
+    club: document.getElementById('form-club').value.trim(),
+    bassin: document.getElementById('form-bassin').value,
+  };
+  STATE.swimmers[STATE.currentSwimmer].data.push(entry);
+  saveState();
+  document.getElementById('form-temps').value = '';
+  document.getElementById('form-pts').value = '';
+  document.getElementById('form-meeting').value = '';
+  document.getElementById('form-lien').value = '';
+  document.querySelectorAll('.chip-sel.active').forEach(b => b.classList.remove('active'));
+  showToast('✓ Résultat enregistré !');
+  refreshFilters('results');
+}
+
+
+
+// ── MODAL DÉTAIL PERFORMANCE ─────────────────────────────────────────────────
+let detailIdx = -1;
+
+function openDetailModal(idx) {
+  detailIdx = idx;
+  const d = currentData()[idx];
+  if (!d) return;
+
+  const pts = parseInt(d.pts) || 0;
+  const ptsColor = pts >= 800 ? '#00D97E' : pts >= 600 ? '#FFB800' : '#6B7394';
+
+  document.getElementById('detail-dist').textContent = d.dist;
+  document.getElementById('detail-badge').style.background = currentColor();
+  document.getElementById('detail-temps').textContent = d.temps;
+  document.getElementById('detail-nage').textContent = d.nage + ' · ' + (d.bassin === '50 mètres' ? '50m' : '25m');
+
+  const ptsEl = document.getElementById('detail-pts');
+  ptsEl.textContent = d.pts ? d.pts + ' pts' : '—';
+  ptsEl.style.background = ptsColor + '22';
+  ptsEl.style.color = ptsColor;
+
+  document.getElementById('detail-date').textContent = fmtDate(d.date);
+  document.getElementById('detail-meeting').textContent = d.meeting || '—';
+  document.getElementById('detail-niveau').textContent = d.niveau || '—';
+  document.getElementById('detail-bassin').textContent = d.bassin || '—';
+  document.getElementById('detail-age').textContent = d.age || '—';
+  document.getElementById('detail-club').textContent = d.club || '—';
+
+  const lienRow = document.getElementById('detail-lien-row');
+  if (d.lien) {
+    lienRow.style.display = 'flex';
+    document.getElementById('detail-lien').href = d.lien;
+  } else {
+    lienRow.style.display = 'none';
+  }
+
+  document.getElementById('detail-edit-btn').onclick = () => {
+    closeDetailModal();
+    openEditModal(idx);
+  };
+
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+function closeDetailModal() {
+  document.getElementById('detail-modal').classList.remove('open');
+  detailIdx = -1;
+}
+
+function closeDetailModalOutside(e) {
+  if (e.target === document.getElementById('detail-modal')) closeDetailModal();
+}
+
+
+// ── ÉDITION RÉSULTAT ─────────────────────────────────────────────────────────
+let editingIdx = -1;
+
+function openEditModal(idx) {
+  editingIdx = idx;
+  const d = currentData()[idx];
+  if (!d) return;
+
+  // Chips distance
+  document.querySelectorAll('#edit-dist .chip-sel').forEach(b => {
+    b.classList.toggle('active', b.dataset.val === String(d.dist));
+    b.onclick = () => {
+      document.querySelectorAll('#edit-dist .chip-sel').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+    };
+  });
+  // Chips nage
+  document.querySelectorAll('#edit-nage .chip-sel').forEach(b => {
+    b.classList.toggle('active', b.dataset.val === d.nage);
+    b.onclick = () => {
+      document.querySelectorAll('#edit-nage .chip-sel').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+    };
+  });
+
+  document.getElementById('edit-temps').value = d.temps || '';
+  document.getElementById('edit-pts').value = d.pts || '';
+  document.getElementById('edit-meeting').value = d.meeting || '';
+  document.getElementById('edit-date').value = d.date || '';
+  document.getElementById('edit-niveau').value = d.niveau || '[DEP]';
+  document.getElementById('edit-bassin').value = d.bassin || '25 mètres';
+  document.getElementById('edit-age').value = d.age || '';
+  document.getElementById('edit-club').value = d.club || '';
+  document.getElementById('edit-lien').value = d.lien || '';
+
+  document.getElementById('edit-modal').classList.add('open');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').classList.remove('open');
+  editingIdx = -1;
+}
+
+function closeEditModalOutside(e) {
+  if (e.target === document.getElementById('edit-modal')) closeEditModal();
+}
+
+function saveEdit() {
+  if (editingIdx < 0) return;
+  const dist = document.querySelector('#edit-dist .chip-sel.active')?.dataset.val;
+  const nage = document.querySelector('#edit-nage .chip-sel.active')?.dataset.val;
+  const temps = document.getElementById('edit-temps').value.trim();
+  const date = document.getElementById('edit-date').value;
+  if (!dist || !nage || !temps || !date) { showToast('Remplir Distance, Nage, Temps et Date'); return; }
+
+  const data = STATE.swimmers[STATE.currentSwimmer].data;
+  data[editingIdx] = {
+    ...data[editingIdx],
+    dist: parseInt(dist), nage,
+    temps: temps.includes(':') ? temps : '0:'+temps,
+    pts: document.getElementById('edit-pts').value.trim().replace(/[^0-9]/g,''),
+    meeting: document.getElementById('edit-meeting').value.trim().toUpperCase(),
+    date,
+    niveau: document.getElementById('edit-niveau').value,
+    bassin: document.getElementById('edit-bassin').value,
+    age: document.getElementById('edit-age').value.trim(),
+    club: document.getElementById('edit-club').value.trim(),
+    lien: document.getElementById('edit-lien').value.trim(),
+  };
+  saveState();
+  closeEditModal();
+  refreshFilters('results');
+  showToast('✓ Résultat modifié');
+}
+
+function deleteResult() {
+  if (editingIdx < 0) return;
+  if (!confirm('Supprimer ce résultat ?')) return;
+  STATE.swimmers[STATE.currentSwimmer].data.splice(editingIdx, 1);
+  saveState();
+  closeEditModal();
+  refreshFilters('results');
+  showToast('Résultat supprimé');
+}
+
+
+// ── IMPORT / EXPORT ──────────────────────────────────────────────────────────
+const CSV_HEADERS = ['nageur','dist','nage','temps','age','pts','meeting','date','niveau','club','bassin','lien'];
+
+function toCSV(rows) {
+  const lines = [CSV_HEADERS.join(',')];
+  rows.forEach(r => {
+    lines.push(CSV_HEADERS.map(h => {
+      const v = r[h] !== undefined ? String(r[h]) : '';
+      return v.includes(',') || v.includes('"') ? '"'+v.replace(/"/g,'""')+'"' : v;
+    }).join(','));
+  });
+  return lines.join('\n');
+}
+
+function exportCSV(all) {
+  let rows = [];
+  if (all) {
+    Object.entries(STATE.swimmers).forEach(([name, sw]) => {
+      sw.data.forEach(d => rows.push({nageur: name, ...d}));
+    });
+  } else {
+    rows = currentData().map(d => ({nageur: STATE.currentSwimmer, ...d}));
+  }
+  if (!rows.length) { showToast('Aucune donnée à exporter'); return; }
+  const csv = toCSV(rows);
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (all ? 'natation_tous' : 'natation_'+STATE.currentSwimmer) + '_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Export téléchargé !');
+}
+
+function importCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      // Nettoyer BOM et CRLF
+      const text = e.target.result.replace(/^\uFEFF/,'').replace(/\r/g,'');
+      const lines = text.split('\n').filter(l => l.trim());
+
+      // Détecter le séparateur (virgule ou point-virgule)
+      const sep = lines[0].includes(';') ? ';' : ',';
+
+      const rawHeaders = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g,'').toLowerCase());
+
+      // Mapping flexible des noms de colonnes
+      const colMap = {
+        'nageur': ['nageur'],
+        'dist': ['dist','distance'],
+        'nage': ['nage','type'],
+        'temps': ['temps'],
+        'age': ['age','age '],
+        'pts': ['pts'],
+        'meeting': ['meeting'],
+        'date': ['date'],
+        'niveau': ['niveau'],
+        'club': ['club'],
+        'bassin': ['bassin'],
+        'lien': ['lien'],
+      };
+
+      // Construire l'index colonne -> clé interne
+      const colIdx = {};
+      rawHeaders.forEach((h, i) => {
+        for (const [key, aliases] of Object.entries(colMap)) {
+          if (aliases.includes(h)) { colIdx[key] = i; break; }
+        }
+      });
+
+      let imported = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const vals = sep === ',' ? parseCSVLine(lines[i]) : lines[i].split(';').map(v => v.trim().replace(/^"|"$/g,''));
+        if (vals.length < 3) continue;
+
+        const get = key => (colIdx[key] !== undefined ? vals[colIdx[key]] || '' : '');
+
+        const nageur = get('nageur') || STATE.currentSwimmer;
+        if (!STATE.swimmers[nageur]) {
+          const colorIdx = Object.keys(STATE.swimmers).length % AVATAR_COLORS.length;
+          STATE.swimmers[nageur] = { color: AVATAR_COLORS[colorIdx], data: [], profile: {} };
+        }
+
+        // Nettoyer pts : enlever " pts" si présent
+        const ptsRaw = get('pts').replace(/\s*pts/i,'').trim();
+
+        STATE.swimmers[nageur].data.push({
+          dist: parseInt(get('dist')) || 0,
+          nage: get('nage'),
+          temps: get('temps'),
+          age: get('age'),
+          pts: ptsRaw,
+          meeting: get('meeting'),
+          date: get('date'),
+          niveau: get('niveau') || '[DEP]',
+          lien: get('lien'),
+          club: get('club'),
+          bassin: get('bassin') || '25 mètres',
+        });
+        imported++;
+      }
+      saveState();
+      updateSwimmerUI();
+      refreshFilters('results');
+      renderProfile();
+      showToast(`✓ ${imported} résultats importés`);
+    } catch(err) {
+      console.error(err);
+      showToast('Erreur import CSV');
+    }
+    event.target.value = '';
+  };
+  // Essayer latin-1 pour les fichiers Excel français
+  reader.readAsText(file, 'ISO-8859-1');
+}
+
+function parseCSVLine(line) {
+  const vals = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { if (inQ && line[i+1]==='"') { cur+='"'; i++; } else inQ=!inQ; }
+    else if (c === ',' && !inQ) { vals.push(cur.trim()); cur=''; }
+    else cur += c;
+  }
+  vals.push(cur.trim());
+  return vals;
+}
+
+// ── GRAPHIQUE ────────────────────────────────────────────────────────────────
+const PALETTE = ['#0057FF','#00D97E','#FF4D6A','#FFB800','#A78BFA','#38BDF8','#FB923C','#34D399'];
+const serieColorMap = {};
+let colorIdx = 0;
+function getColor(key) {
+  if (!serieColorMap[key]) { serieColorMap[key] = PALETTE[colorIdx % PALETTE.length]; colorIdx++; }
+  return serieColorMap[key];
+}
+
+let chartInst = null;
+
+function renderChart() {
+  const data = getFiltered('graph').sort((a,b) => new Date(a.date)-new Date(b.date));
+  const statsEl = document.getElementById('stats-grid');
+  if (data.length) {
+    const best = [...data].sort((a,b) => parseSeconds(a.temps)-parseSeconds(b.temps))[0];
+    const first = data[0]; const last = data[data.length-1];
+    const diff = parseSeconds(first.temps) - parseSeconds(last.temps);
+    statsEl.innerHTML = `
+      <div class="stat-card"><div class="stat-label">Meilleur chrono</div><div class="stat-val">${best.temps}</div><div class="stat-sub">${best.meeting}</div></div>
+      <div class="stat-card"><div class="stat-label">Progression</div><div class="stat-val" style="color:${diff>0?'var(--green)':'var(--red)'}">${diff>0?'-':'+'} ${Math.abs(diff).toFixed(2)}s</div><div class="stat-sub">depuis ${fmtDate(first.date)}</div></div>`;
+  } else { statsEl.innerHTML = ''; }
+
+  const groups = {};
+  data.forEach(d => {
+    const key = d.dist+'m '+d.nage;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(d);
+  });
+  const allDates = [...new Set(data.map(d => d.date))].sort();
+  const labels = allDates.map(d => fmtDate(d));
+
+  const datasets = Object.entries(groups).map(([key, pts]) => {
+    const color = getColor(key);
+    const byDate = {};
+    pts.forEach(p => { byDate[p.date] = parseSeconds(p.temps); });
+    return {
+      label: key,
+      data: allDates.map(d => byDate[d] ?? null),
+      borderColor: color, backgroundColor: color+'33',
+      borderWidth: 2, pointRadius: 5, pointHoverRadius: 8,
+      tension: 0.3, spanGaps: true,
+    };
+  });
+
+  const distF = filters.graph.dist, nageF = filters.graph.nage;
+  document.getElementById('graph-title').textContent = 'CHRONOS — ' + (distF!=='all'?distF+'m ':'') + (nageF!=='all'?nageF:'toutes nages').toUpperCase();
+  document.getElementById('chart-legend').innerHTML = Object.keys(groups).map(key =>
+    `<div class="legend-item"><div class="legend-dot" style="background:${getColor(key)}"></div>${key}</div>`
+  ).join('');
+
+  if (chartInst) { chartInst.destroy(); chartInst = null; }
+  const ctx = document.getElementById('myChart').getContext('2d');
+  chartInst = new Chart(ctx, {
+    type:'line', data:{labels, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label: item => {
+              const s = item.raw; if (s===null) return '';
+              const m = Math.floor(s/60); const sec = (s-m*60).toFixed(2).padStart(5,'0');
+              return ' '+item.dataset.label+' : '+(m>0?m+':':'')+sec+'s';
+            }
+          },
+          backgroundColor:'#1C2235',titleColor:'#F0F2FF',bodyColor:'#A0AABF',borderColor:'#252D45',borderWidth:1,
+        }
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#6B7394',font:{size:9},maxRotation:45}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#6B7394',font:{size:9},callback:v=>{const m=Math.floor(v/60);const s=Math.round(v-m*60);return m>0?m+':'+String(s).padStart(2,'0'):v+'s';}}}
+      }
+    }
+  });
+}
+
+
+// ── PROFIL ───────────────────────────────────────────────────────────────────
+const AVATAR_COLORS_ALL = ['#0057FF','#00D97E','#FF4D6A','#FFB800','#A78BFA','#38BDF8','#FB923C','#34D399'];
+
+const NAGE_LABELS = {
+  'NL':   'NL',
+  'Dos':  'DOS',
+  'Bra.': 'BRA',
+  'Pap.': 'PAP',
+  '4 N.': '4N',
+};
+const NAGE_ORDER = ['NL','Dos','Bra.','Pap.','4 N.'];
+const DIST_ORDER = [50, 100, 200];
+
+let activeRecordNage = 'NL';
+
+function renderProfile() {
+  const sw = STATE.swimmers[STATE.currentSwimmer];
+  const name = STATE.currentSwimmer;
+  const profile = sw.profile || {};
+  const color = sw.color || '#0057FF';
+  const count = sw.data.length;
+
+  document.getElementById('profile-avatar-big').textContent = initials(name);
+  document.getElementById('profile-avatar-big').style.background = color;
+  document.getElementById('profile-name-display').textContent = profile.nom || name;
+  document.getElementById('profile-subtitle').textContent = count + ' résultat' + (count!==1?'s':'');
+
+  // Stats
+  const pts = sw.data.map(d => parseInt(d.pts)||0).filter(p=>p>0);
+  const maxPts = pts.length ? Math.max(...pts) : 0;
+  const meetings = new Set(sw.data.map(d => d.meeting).filter(Boolean)).size;
+  document.getElementById('profile-stats').innerHTML = `
+    <div class="stat-item"><div class="stat-item-val">${count}</div><div class="stat-item-label">Résultats</div></div>
+    <div class="stat-item"><div class="stat-item-val">${maxPts||'—'}</div><div class="stat-item-label">Pts max</div></div>
+    <div class="stat-item"><div class="stat-item-val">${meetings}</div><div class="stat-item-label">Meetings</div></div>
+  `;
+
+  // Nages disponibles pour ce nageur
+  const nagesDispos = NAGE_ORDER.filter(n => sw.data.some(d => d.nage === n));
+  if (nagesDispos.length && !nagesDispos.includes(activeRecordNage)) activeRecordNage = nagesDispos[0];
+
+  // Sélecteur de nage
+  const sel = document.getElementById('records-nage-selector');
+  sel.innerHTML = nagesDispos.map(n =>
+    `<button class="nage-badge ${n===activeRecordNage?'active':''}" onclick="setRecordNage('${n}')">${NAGE_LABELS[n]||n}</button>`
+  ).join('');
+
+  renderRecords(sw.data);
+
+  // Champs infos
+  const setField = (id, val) => {
+    const el = document.getElementById(id);
+    if (val) { el.textContent = val; el.classList.remove('empty'); }
+    else { el.textContent = 'Non renseigné'; el.classList.add('empty'); }
+  };
+  setField('pf-nom', profile.nom);
+  setField('pf-naissance', profile.naissance ? new Date(profile.naissance+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'}) : '');
+  setField('pf-club', profile.club);
+  setField('pf-licence', profile.licence);
+  setField('pf-groupe', profile.groupe);
+  setField('pf-entraineur', profile.entraineur);
+}
+
+function setRecordNage(nage) {
+  activeRecordNage = nage;
+  const sw = STATE.swimmers[STATE.currentSwimmer];
+  // Mettre à jour les badges
+  document.querySelectorAll('.nage-badge').forEach(b => {
+    b.classList.toggle('active', b.textContent === (NAGE_LABELS[nage]||nage));
+  });
+  renderRecords(sw.data);
+}
+
+function renderRecords(data) {
+  const grid = document.getElementById('records-grid');
+  grid.innerHTML = DIST_ORDER.map(dist => {
+    const perfs = data.filter(d => d.dist === dist && d.nage === activeRecordNage)
+                      .sort((a,b) => parseSeconds(a.temps) - parseSeconds(b.temps));
+    const best = perfs[0];
+    if (!best) {
+      return `<div class="record-box empty">
+        <div class="record-box-dist">${dist} m</div>
+        <div class="record-box-time">—</div>
+      </div>`;
+    }
+    const pts = best.pts ? best.pts+' pts' : '';
+    const realIdx = STATE.swimmers[STATE.currentSwimmer].data.indexOf(best);
+    return `<div class="record-box" onclick="openDetailModal(${realIdx})" style="cursor:pointer">
+      <div class="record-box-dist">${dist} m</div>
+      <div class="record-box-time">${best.temps}</div>
+      <div class="record-box-pts">${pts}</div>
+      <div class="record-box-meet">${best.meeting||''}</div>
+    </div>`;
+  }).join('');
+}
+
+function openEditProfile() {
+  const sw = STATE.swimmers[STATE.currentSwimmer];
+  const profile = sw.profile || {};
+  document.getElementById('pe-prenom').value = STATE.currentSwimmer;
+  document.getElementById('pe-nom').value = profile.nom || '';
+  document.getElementById('pe-naissance').value = profile.naissance || '';
+  document.getElementById('pe-club').value = profile.club || '';
+  document.getElementById('pe-licence').value = profile.licence || '';
+  document.getElementById('pe-groupe').value = profile.groupe || '';
+  document.getElementById('pe-entraineur').value = profile.entraineur || '';
+
+  // Color picker
+  const cp = document.getElementById('color-picker');
+  cp.innerHTML = AVATAR_COLORS_ALL.map(c =>
+    `<div class="color-dot ${sw.color===c?'selected':''}" style="background:${c}" onclick="selectProfileColor('${c}')"></div>`
+  ).join('');
+
+  document.getElementById('profile-modal').classList.add('open');
+}
+
+function selectProfileColor(color) {
+  document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('selected'));
+  document.querySelector(`.color-dot[style="background:${color}"]`)?.classList.add('selected');
+}
+
+function closeProfileModal() { document.getElementById('profile-modal').classList.remove('open'); }
+function closeProfileModalOutside(e) { if (e.target===document.getElementById('profile-modal')) closeProfileModal(); }
+
+function saveProfile() {
+  const sw = STATE.swimmers[STATE.currentSwimmer];
+  const newPrenom = document.getElementById('pe-prenom').value.trim();
+  const selectedColor = document.querySelector('.color-dot.selected')?.style.background || sw.color;
+
+  sw.profile = {
+    nom: document.getElementById('pe-nom').value.trim(),
+    naissance: document.getElementById('pe-naissance').value,
+    club: document.getElementById('pe-club').value.trim(),
+    licence: document.getElementById('pe-licence').value.trim(),
+    groupe: document.getElementById('pe-groupe').value.trim(),
+    entraineur: document.getElementById('pe-entraineur').value.trim(),
+  };
+  sw.color = selectedColor;
+
+  // Renommer si prénom changé
+  if (newPrenom && newPrenom !== STATE.currentSwimmer) {
+    if (STATE.swimmers[newPrenom]) { showToast('Ce prénom existe déjà'); return; }
+    STATE.swimmers[newPrenom] = sw;
+    delete STATE.swimmers[STATE.currentSwimmer];
+    STATE.currentSwimmer = newPrenom;
+  }
+
+  saveState();
+  closeProfileModal();
+  updateSwimmerUI();
+  renderProfile();
+  showToast('✓ Fiche mise à jour');
+}
+
+function confirmDeleteSwimmer() {
+  if (!confirm('Supprimer ' + STATE.currentSwimmer + ' et toutes ses données ?')) return;
+  delete STATE.swimmers[STATE.currentSwimmer];
+  const remaining = Object.keys(STATE.swimmers);
+  if (!remaining.length) {
+    STATE.swimmers['Nouveau nageur'] = { color: '#0057FF', data: [], profile: {} };
+    remaining.push('Nouveau nageur');
+  }
+  STATE.currentSwimmer = remaining[0];
+  saveState();
+  updateSwimmerUI();
+  renderProfile();
+  refreshFilters('results');
+  showToast('Nageur supprimé');
+}
+
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── NAV ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('screen-'+btn.dataset.screen).classList.add('active');
+    if (btn.dataset.screen === 'chart') renderChart();
+    if (btn.dataset.screen === 'profile') renderProfile();
+  };
+});
+
+// ── HAUTEUR NAV ANDROID ──────────────────────────────────────────────────────
+function fixNavHeight() {
+  const sysBarH = window.innerHeight - (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+  const safeBottom = Math.max(sysBarH, 0);
+  const nav = document.querySelector('nav');
+  nav.style.paddingBottom = safeBottom + 'px';
+  const navH = nav.getBoundingClientRect().height;
+  document.querySelectorAll('.screen').forEach(s => { s.style.paddingBottom = (navH+12)+'px'; });
+}
+fixNavHeight();
+window.addEventListener('resize', fixNavHeight);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', fixNavHeight);
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+updateSwimmerUI();
+refreshFilters('results');
+refreshFilters('graph');
+initForm();
+renderProfile();
+
+// Init Firebase
+if (window.firebaseReady) {
+  pullFromFirebase().then(() => subscribeFirebase());
+} else {
+  window.addEventListener('firebaseReady', () => {
+    pullFromFirebase().then(() => subscribeFirebase());
+  });
+}
+</script>
+</body>
+</html>
