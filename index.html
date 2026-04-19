@@ -15,7 +15,7 @@
 // ── FIREBASE INIT ─────────────────────────────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBlKWmcz162vvSZ-cPVJof_98I3ZyFfyb0",
@@ -53,7 +53,6 @@ window.fsCreateUser = createUserWithEmailAndPassword;
 window.fsSignOut = () => signOut(auth);
 window.fsOnAuthStateChanged = (cb) => onAuthStateChanged(auth, cb);
 window.googleProvider = new GoogleAuthProvider();
-window.fsGoogleSignIn = () => signInWithRedirect(auth, window.googleProvider);
 
 // Gérer le retour après redirection Google
 getRedirectResult(auth).catch(e => {
@@ -915,23 +914,6 @@ async function handleGoogleAuth() {
   }
 }
 
-async function handleGoogleAuth() {
-  const errEl = document.getElementById('login-error');
-  errEl.textContent = '';
-  try {
-    if (!window.firebaseReady || !window.fsGoogleSignIn) {
-      errEl.style.color = 'var(--amber)';
-      errEl.textContent = 'Initialisation...';
-      await new Promise(r => { window.addEventListener('firebaseReady', r, {once:true}); setTimeout(r,5000); });
-    }
-    errEl.style.color = 'var(--amber)';
-    errEl.textContent = 'Redirection vers Google...';
-    await window.fsGoogleSignIn();
-  } catch(e) {
-    errEl.style.color = 'var(--red)';
-    errEl.textContent = 'Erreur Google : ' + (e.code || e.message);
-  }
-}
 let currentUser = null;
 
 function switchLoginTab(mode) {
