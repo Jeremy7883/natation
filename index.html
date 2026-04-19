@@ -51,7 +51,10 @@ window.fsOnSnapshot = onSnapshot;
 window.fsCollection = collection;
 window.fsSignIn = signInWithEmailAndPassword;
 window.fsCreateUser = createUserWithEmailAndPassword;
-window.fsGoogleSignIn = (auth, provider) => signInWithPopup(auth, provider);
+window.fsGoogleSignIn = async (auth, provider) => {
+  const result = await signInWithPopup(auth, provider);
+  return result;
+};
 window.fsSignOut = () => signOut(auth);
 window.fsDeleteUser = (user) => deleteUser(user);
 window.fsOnAuthStateChanged = (cb) => onAuthStateChanged(auth, cb);
@@ -751,6 +754,16 @@ async function handleGoogleAuth() {
   const errEl = document.getElementById('login-error');
   errEl.textContent = '';
   try {
+    // Attendre que Firebase soit prêt
+    if (!window.firebaseReady || !window.auth || !window.googleProvider) {
+      await new Promise(resolve => {
+        window.addEventListener('firebaseReady', resolve, { once: true });
+        setTimeout(resolve, 3000);
+      });
+    }
+    if (typeof window.fsGoogleSignIn !== 'function') {
+      throw new Error('Firebase Auth non initialisé. Rechargez la page.');
+    }
     await window.fsGoogleSignIn(window.auth, window.googleProvider);
   } catch(e) {
     errEl.style.color = 'var(--red)';
@@ -758,7 +771,7 @@ async function handleGoogleAuth() {
     if (e.code === 'auth/user-disabled') {
       errEl.textContent = "Compte désactivé. Contactez l'administrateur.";
     } else {
-      errEl.textContent = 'Erreur Google : ' + e.message;
+      errEl.textContent = 'Erreur Google : ' + (e.code || e.message);
     }
   }
 }
@@ -877,13 +890,15 @@ function applyRoleUI() {
   }
 
   // Cacher la flèche et désactiver le curseur pour les non-coachs
-  document.querySelectorAll('.swimmer-arrow').forEach(el => {
-    el.style.display = isCoach ? 'inline' : 'none';
-  });
-  document.querySelectorAll('.swimmer-btn').forEach(el => {
-    el.style.cursor = isCoach ? 'pointer' : 'default';
-    el.style.opacity = isCoach ? '1' : '0.85';
-  });
+  setTimeout(() => {
+    document.querySelectorAll('.swimmer-arrow').forEach(el => {
+      el.style.display = isCoach ? 'inline' : 'none';
+    });
+    document.querySelectorAll('.swimmer-btn').forEach(el => {
+      el.style.cursor = isCoach ? 'pointer' : 'default';
+      el.style.opacity = isCoach ? '1' : '0.85';
+    });
+  }, 100);
 
   // Boutons d'édition selon le rôle
   applyEditButtonsVisibility();
@@ -897,7 +912,7 @@ function switchScreen(screenName) {
     s.classList.toggle('active', s.id === 'screen-' + screenName);
   });
   if (screenName === 'chart') renderChart();
-  if (screenName === 'profile') renderProfile();
+  if (screenName === 'profile' && currentUser) renderProfile();
   if (screenName === 'results') refreshFilters('results');
 }
 
@@ -1662,6 +1677,8 @@ const DIST_ORDER = [50, 100, 200];
 let activeRecordNage = 'NL';
 
 function renderProfile() {
+  // Ne rien faire si l'utilisateur n'est pas connecté
+  if (!currentUser) return;
   const isCoach = userRole === 'coach';
   const isNageur = userRole === 'nageur';
   const isSupporter = userRole === 'supporter';
@@ -1979,7 +1996,6 @@ updateSwimmerUI();
 refreshFilters('results');
 refreshFilters('graph');
 initForm();
-renderProfile();
 
 // Init Auth + Firebase
 // Cacher l'app au démarrage, montrer login
