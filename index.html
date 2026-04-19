@@ -1005,37 +1005,46 @@ async function handleEmailAuth() {
 
   try {
     if (isSignup) {
+      // 1. Créer le compte Firebase Auth
       const cred = await window.fsCreateUser(window.auth, email, password);
       const uid = cred.user.uid;
       const requestedRole = document.getElementById('login-role-req')?.value || 'supporter';
       const requestedSwimmer = document.getElementById('login-swimmer-req')?.value || '';
 
-      // Attendre que Firebase Firestore soit prêt
-      await new Promise(resolve => {
-        if (window.db && window.fsDoc && window.fsSetDoc) { resolve(); return; }
-        window.addEventListener('firebaseReady', resolve, { once: true });
-        setTimeout(resolve, 3000); // timeout 3s
-      });
-
-      // Enregistrer la demande dans Firestore
+      // 2. Écrire dans Firestore PENDANT que l'utilisateur est encore connecté
+      // (les règles Firestore exigent request.auth != null)
+      let firestoreOk = false;
       try {
+        // S'assurer que Firestore est prêt
+        if (!window.db || !window.fsDoc || !window.fsSetDoc) {
+          await new Promise(resolve => {
+            window.addEventListener('firebaseReady', resolve, { once: true });
+            setTimeout(resolve, 5000);
+          });
+        }
         const reqRef = window.fsDoc(window.db, 'pending_users', uid);
         await window.fsSetDoc(reqRef, {
-          uid, email, requestedAt: Date.now(), status: 'pending',
-          requestedRole, requestedSwimmer
+          uid, email,
+          requestedAt: Date.now(),
+          status: 'pending',
+          requestedRole,
+          requestedSwimmer
         });
+        firestoreOk = true;
       } catch(firestoreErr) {
-        console.warn('Firestore write error:', firestoreErr);
-        // Stocker localement en backup si Firestore échoue
-        const backup = JSON.parse(localStorage.getItem('pending_backup') || '[]');
-        backup.push({ uid, email, requestedAt: Date.now(), requestedRole, requestedSwimmer });
-        localStorage.setItem('pending_backup', JSON.stringify(backup));
+        console.warn('Firestore write error:', firestoreErr.code, firestoreErr.message);
       }
 
-      // Déconnecter immédiatement — coach doit valider
+      // 3. Déconnecter APRÈS l'écriture Firestore
       await window.fsSignOut();
-      errEl.style.color = 'var(--green)';
-      errEl.textContent = "✓ Demande envoyée ! Un coach validera votre accès.";
+
+      if (firestoreOk) {
+        errEl.style.color = 'var(--green)';
+        errEl.textContent = "✓ Demande envoyée ! Un coach validera votre accès.";
+      } else {
+        errEl.style.color = 'var(--amber)';
+        errEl.textContent = "Compte créé mais demande non enregistrée. Contactez un coach.";
+      }
     } else {
       await window.fsSignIn(window.auth, email, password);
     }
