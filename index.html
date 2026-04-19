@@ -288,8 +288,20 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
       <input class="login-input" id="login-password" type="password" placeholder="Mot de passe" autocomplete="current-password">
     </div>
     <button class="btn-login" id="btn-login-action" onclick="handleEmailAuth()">SE CONNECTER</button>
-    <div id="login-info-signup" style="display:none" class="login-info">
-      ⚠️ Votre demande sera examinée.<br>Un administrateur devra valider votre accès.
+    <div id="login-info-signup" style="display:none">
+      <div class="login-field">
+        <select class="login-input" id="login-role-req" style="margin-top:4px">
+          <option value="nageur">🏊 Nageur</option>
+          <option value="supporter">👥 Supporter</option>
+          <option value="coach">🏆 Coach / Admin</option>
+        </select>
+      </div>
+      <div id="login-swimmer-field" style="display:none">
+        <select class="login-input" id="login-swimmer-req">
+          <option value="">-- Choisir mon profil nageur --</option>
+        </select>
+      </div>
+      <div class="login-info">⚠️ Votre demande sera examinée par un coach avant activation.</div>
     </div>
     <div class="login-divider">ou</div>
     <button class="btn-google" onclick="handleGoogleAuth()">
@@ -298,6 +310,20 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
     </button>
     <div class="login-error" id="login-error"></div>
   </div>
+</div>
+
+<!-- ÉCRAN ADMIN -->
+<div id="admin-screen">
+  <div class="admin-header">
+    <button class="admin-back" onclick="closeAdmin()">← Retour</button>
+    <div class="admin-title">ADMINISTRATION</div>
+  </div>
+  <div class="admin-tab-bar">
+    <button class="admin-tab active" onclick="switchAdminTab('pending')">En attente <span id="pending-count" style="color:var(--red)"></span></button>
+    <button class="admin-tab" onclick="switchAdminTab('users')">Utilisateurs</button>
+  </div>
+  <div class="admin-list" id="admin-pending-list"></div>
+  <div class="admin-list" id="admin-users-list" style="display:none"></div>
 </div>
 
 <div class="app">
@@ -317,6 +343,7 @@ nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-w
         <span class="user-bar-email" id="user-bar-email">—</span>
         <span style="color:var(--muted);font-size:10px">⏏</span>
       </button>
+      <button id="btn-admin" onclick="openAdmin()" style="display:none;background:var(--amber);border:none;border-radius:8px;padding:5px 10px;color:#000;font-size:12px;font-weight:700;cursor:pointer">⚙️</button>
     </div>
     <div class="header-sub" id="results-count">0 résultats</div>
   </div>
@@ -947,6 +974,23 @@ function switchLoginTab(mode) {
   document.getElementById('login-info-signup').style.display = isSignup ? 'block' : 'none';
   document.getElementById('login-error').textContent = '';
   document.getElementById('login-password').autocomplete = isSignup ? 'new-password' : 'current-password';
+  if (isSignup) populateSwimmerSelect();
+}
+
+function populateSwimmerSelect() {
+  const sel = document.getElementById('login-swimmer-req');
+  const roleEl = document.getElementById('login-role-req');
+  if (!sel || !roleEl) return;
+  // Peupler la liste des nageurs
+  const swimmers = Object.keys(STATE.swimmers);
+  sel.innerHTML = '<option value="">-- Choisir mon profil nageur --</option>' +
+    swimmers.map(s => `<option value="${s}">${s}</option>`).join('');
+  // Afficher/cacher selon le rôle
+  roleEl.onchange = () => {
+    const isNageur = roleEl.value === 'nageur';
+    document.getElementById('login-swimmer-field').style.display = isNageur ? 'block' : 'none';
+  };
+  roleEl.onchange();
 }
 
 async function handleEmailAuth() {
@@ -961,14 +1005,20 @@ async function handleEmailAuth() {
 
   try {
     if (isSignup) {
-      await window.fsCreateUser(window.auth, email, password);
-      errEl.style.color = 'var(--green)';
-      errEl.textContent = "✓ Compte créé ! En attente de validation par l'administrateur.";
-      // Déconnecter immédiatement — admin doit valider
+      const cred = await window.fsCreateUser(window.auth, email, password);
+      const uid = cred.user.uid;
+      const requestedRole = document.getElementById('login-role-req')?.value || 'supporter';
+      const requestedSwimmer = document.getElementById('login-swimmer-req')?.value || '';
+      // Enregistrer la demande dans Firestore avec l uid
+      const reqRef = window.fsDoc(window.db, 'pending_users', uid);
+      await window.fsSetDoc(reqRef, { 
+        uid, email, requestedAt: Date.now(), status: 'pending',
+        requestedRole, requestedSwimmer
+      });
+      // Déconnecter immédiatement — coach doit valider
       await window.fsSignOut();
-      // Enregistrer la demande dans Firestore
-      const reqRef = window.fsDoc(window.db, 'pending_users', email.replace('@','_').replace('.','_'));
-      await window.fsSetDoc(reqRef, { email, requestedAt: Date.now(), status: 'pending' });
+      errEl.style.color = 'var(--green)';
+      errEl.textContent = "✓ Demande envoyée ! Un coach validera votre accès.";
     } else {
       await window.fsSignIn(window.auth, email, password);
     }
@@ -1013,10 +1063,15 @@ function showLoginScreen() {
   document.querySelector('.app').style.display = 'none';
 }
 
-function showAppScreen(user) {
+async function showAppScreen(user) {
   document.getElementById('login-screen').style.display = 'none';
-  document.querySelector('.app').style.display = 'flex';
-  document.getElementById('user-bar-email').textContent = user.email || user.displayName || 'Connecté';
+  hidePendingScreen();
+  document.getElementById('user-bar-email').textContent = user.email || user.displayName || "Connecté";
+  // Charger le profil/rôle
+  await loadUserProfile(user.uid);
+  if (userRole !== 'pending' && userRole !== null) {
+    document.querySelector('.app').style.display = 'flex';
+  }
 }
 
 function initAuth() {
@@ -1037,20 +1092,294 @@ function initAuth() {
   window.fsOnAuthStateChanged(async (user) => {
     if (user) {
       currentUser = user;
-      showAppScreen(user);
-      // Charger les données Firebase
-      if (!window._fbInitialized) {
+      await showAppScreen(user);
+      // Charger les données Firebase seulement si accès accordé
+      if (userRole !== 'pending' && !window._fbInitialized) {
         window._fbInitialized = true;
         await pullFromFirebase();
         subscribeFirebase();
       }
     } else {
       currentUser = null;
+      userRole = null;
+      userProfile = null;
       showLoginScreen();
+      hidePendingScreen();
       window._fbInitialized = false;
       if (fbUnsubscribe) { fbUnsubscribe(); fbUnsubscribe = null; }
     }
   });
+}
+
+
+
+// ── RÔLES & PERMISSIONS ──────────────────────────────────────────────────────
+// rôles: 'coach' | 'nageur' | 'supporter' | 'pending'
+let userRole = null;
+let userProfile = null; // { role, swimmerName, email, displayName }
+
+async function loadUserProfile(uid) {
+  try {
+    const ref = window.fsDoc(window.db, 'users', uid);
+    const snap = await window.fsGetDoc(ref);
+    if (snap.exists()) {
+      userProfile = snap.data();
+      userRole = userProfile.role || 'pending';
+    } else {
+      userRole = 'pending';
+      userProfile = null;
+    }
+  } catch(e) {
+    console.warn('loadUserProfile error:', e);
+    userRole = 'pending';
+  }
+  applyRoleUI();
+}
+
+function applyRoleUI() {
+  const isCoach = userRole === 'coach';
+  const isNageur = userRole === 'nageur';
+  const isActive = isCoach || isNageur || userRole === 'supporter';
+
+  // Bouton admin visible uniquement pour les coachs
+  const btnAdmin = document.getElementById('btn-admin');
+  if (btnAdmin) btnAdmin.style.display = isCoach ? 'block' : 'none';
+
+  // Si pending ou non configuré : afficher message d'attente
+  if (!isActive) {
+    showPendingScreen();
+    return;
+  }
+
+  // Boutons d'édition : visibles selon le rôle
+  applyEditButtonsVisibility();
+}
+
+function applyEditButtonsVisibility() {
+  // Appelé après chaque renderResults
+  const isCoach = userRole === 'coach';
+  const isNageur = userRole === 'nageur';
+  
+  document.querySelectorAll('.rc-edit-btn').forEach(btn => {
+    const idx = parseInt(btn.getAttribute('data-idx'));
+    const entry = currentData()[idx];
+    if (!entry) { btn.style.display = 'none'; return; }
+    
+    if (isCoach) {
+      btn.style.display = 'inline-block'; // coach voit tout
+    } else if (isNageur && userProfile && userProfile.swimmerName) {
+      // nageur voit seulement ses propres entrées
+      btn.style.display = (currentData() === STATE.swimmers[userProfile.swimmerName]?.data) ? 'inline-block' : 'none';
+    } else {
+      btn.style.display = 'none';
+    }
+  });
+}
+
+function showPendingScreen() {
+  document.querySelector('.app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'none';
+  // Créer/afficher écran d'attente
+  let pending = document.getElementById('pending-screen');
+  if (!pending) {
+    pending = document.createElement('div');
+    pending.id = 'pending-screen';
+    pending.style.cssText = 'position:fixed;inset:0;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:300';
+    pending.innerHTML = `
+      <div style="font-size:48px;margin-bottom:16px">⏳</div>
+      <div style="font-family:var(--fd);font-size:28px;letter-spacing:1px;margin-bottom:8px">EN ATTENTE</div>
+      <div style="font-size:14px;color:var(--muted);text-align:center;max-width:280px;line-height:1.6;margin-bottom:32px">
+        Votre demande a été envoyée.<br>Un coach validera votre accès prochainement.
+      </div>
+      <button onclick="handleSignOut()" style="padding:12px 24px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:var(--fb);font-size:14px;cursor:pointer">Se déconnecter</button>
+    `;
+    document.body.appendChild(pending);
+  }
+  pending.style.display = 'flex';
+}
+
+function hidePendingScreen() {
+  const p = document.getElementById('pending-screen');
+  if (p) p.style.display = 'none';
+}
+
+// ── ÉCRAN ADMIN ──────────────────────────────────────────────────────────────
+let adminTab = 'pending';
+
+function openAdmin() {
+  if (userRole !== 'coach') return;
+  document.getElementById('admin-screen').style.display = 'flex';
+  document.getElementById('admin-screen').style.flexDirection = 'column';
+  loadAdminData();
+}
+
+function closeAdmin() {
+  document.getElementById('admin-screen').style.display = 'none';
+}
+
+function switchAdminTab(tab) {
+  adminTab = tab;
+  document.querySelectorAll('.admin-tab').forEach((t,i) => {
+    t.classList.toggle('active', (i===0 && tab==='pending') || (i===1 && tab==='users'));
+  });
+  document.getElementById('admin-pending-list').style.display = tab === 'pending' ? 'block' : 'none';
+  document.getElementById('admin-users-list').style.display = tab === 'users' ? 'block' : 'none';
+}
+
+async function loadAdminData() {
+  if (!window.firebaseReady) return;
+  try {
+    // Charger les demandes en attente
+    const pendingRef = window.fsCollection(window.db, 'pending_users');
+    const { getDocs, query, where } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    
+    // Charger tous les utilisateurs
+    const usersSnap = await getDocs(window.fsCollection(window.db, 'users'));
+    const pendingSnap = await getDocs(window.fsCollection(window.db, 'pending_users'));
+
+    const users = [];
+    usersSnap.forEach(d => users.push({id: d.id, ...d.data()}));
+    
+    const pending = [];
+    pendingSnap.forEach(d => pending.push({id: d.id, ...d.data()}));
+
+    // Compter en attente (status pending)
+    const pendingCount = pending.filter(p => p.status === 'pending').length;
+    document.getElementById('pending-count').textContent = pendingCount > 0 ? ` (${pendingCount})` : '';
+
+    renderPendingList(pending.filter(p => p.status === 'pending'));
+    renderUsersList(users);
+
+  } catch(e) {
+    console.warn('loadAdminData error:', e);
+  }
+}
+
+function renderPendingList(pending) {
+  const el = document.getElementById('admin-pending-list');
+  if (!pending.length) {
+    el.innerHTML = '<div class="admin-empty">Aucune demande en attente</div>';
+    return;
+  }
+  const swimmers = Object.keys(STATE.swimmers);
+  el.innerHTML = pending.map(p => `
+    <div class="admin-user-card">
+      <div class="admin-user-top">
+        <div class="admin-user-avatar" style="background:var(--blue)">${(p.email||'?')[0].toUpperCase()}</div>
+        <div class="admin-user-info">
+          <div class="admin-user-email">${p.email || '—'}</div>
+          <div class="admin-user-meta">
+            Rôle demandé : <span class="role-badge role-${p.requestedRole||'supporter'}">${roleLabel(p.requestedRole)}</span>
+            ${p.requestedSwimmer ? ' · Nageur : ' + p.requestedSwimmer : ''}
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Demande le ${p.requestedAt ? new Date(p.requestedAt).toLocaleDateString('fr-FR') : '—'}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="approveUser('${p.id}','${p.email}','${p.requestedRole||'supporter'}','${p.requestedSwimmer||''}')" 
+          style="flex:1;padding:10px;border-radius:var(--r);background:var(--green);border:none;color:#000;font-family:var(--fd);font-size:15px;cursor:pointer">✓ APPROUVER</button>
+        <button onclick="rejectUser('${p.id}')"
+          style="padding:10px 16px;border-radius:var(--r);background:none;border:1px solid var(--red);color:var(--red);font-family:var(--fd);font-size:15px;cursor:pointer">✗ REFUSER</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderUsersList(users) {
+  const el = document.getElementById('admin-users-list');
+  if (!users.length) {
+    el.innerHTML = '<div class="admin-empty">Aucun utilisateur</div>';
+    return;
+  }
+  const swimmers = Object.keys(STATE.swimmers);
+  el.innerHTML = users.map(u => `
+    <div class="admin-user-card">
+      <div class="admin-user-top">
+        <div class="admin-user-avatar" style="background:${u.role==='coach'?'#FFB800':u.role==='nageur'?'var(--blue)':'var(--green)'}">${(u.email||u.displayName||'?')[0].toUpperCase()}</div>
+        <div class="admin-user-info">
+          <div class="admin-user-email">${u.email || u.displayName || u.id}</div>
+          <div class="admin-user-meta"><span class="role-badge role-${u.role}">${roleLabel(u.role)}</span>${u.swimmerName ? ' · ' + u.swimmerName : ''}</div>
+        </div>
+      </div>
+      <div class="admin-user-actions">
+        ${['nageur','supporter','coach'].map(r => `
+          <button class="btn-role btn-role-${r} ${u.role===r?'active':''}" 
+            onclick="changeUserRole('${u.id}','${r}',this)">${roleLabel(r)}</button>
+        `).join('')}
+        <button class="btn-del-user" onclick="deleteUser('${u.id}')">🗑</button>
+      </div>
+      ${u.role==='nageur' ? `
+        <select class="admin-swimmer-select" onchange="changeUserSwimmer('${u.id}',this.value)">
+          <option value="">-- Profil nageur --</option>
+          ${swimmers.map(s => `<option value="${s}" ${u.swimmerName===s?'selected':''}>${s}</option>`).join('')}
+        </select>` : ''}
+    </div>
+  `).join('');
+}
+
+function roleLabel(role) {
+  return {coach:'🏆 Coach', nageur:'🏊 Nageur', supporter:'👥 Supporter', pending:'⏳ En attente'}[role] || role;
+}
+
+async function approveUser(pendingId, email, role, swimmerName) {
+  if (!window.firebaseReady) return;
+  try {
+    const { setDoc, doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    // Trouver l'uid via l'email dans Auth — on stocke l'uid dans pending_users lors de l'inscription
+    const pendingRef = doc(window.db, 'pending_users', pendingId);
+    const pendingSnap = await window.fsGetDoc(pendingRef);
+    const pendingData = pendingSnap.data();
+    const uid = pendingData.uid || pendingId;
+
+    // Créer le profil utilisateur
+    await setDoc(doc(window.db, 'users', uid), {
+      email, role, swimmerName: swimmerName || '',
+      approvedAt: Date.now()
+    });
+    // Supprimer la demande en attente
+    await deleteDoc(pendingRef);
+    showToast("✓ Utilisateur approuvé !");
+    loadAdminData();
+  } catch(e) { showToast("Erreur : " + e.message); }
+}
+
+async function rejectUser(pendingId) {
+  if (!confirm("Refuser et supprimer cette demande ?")) return;
+  try {
+    const { deleteDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await deleteDoc(doc(window.db, 'pending_users', pendingId));
+    showToast("Demande refusée");
+    loadAdminData();
+  } catch(e) { showToast("Erreur : " + e.message); }
+}
+
+async function changeUserRole(uid, role, btn) {
+  try {
+    const { updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await updateDoc(doc(window.db, 'users', uid), { role });
+    btn.closest('.admin-user-card').querySelectorAll('.btn-role').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    showToast("✓ Rôle mis à jour");
+    loadAdminData();
+  } catch(e) { showToast("Erreur : " + e.message); }
+}
+
+async function changeUserSwimmer(uid, swimmerName) {
+  try {
+    const { updateDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await updateDoc(doc(window.db, 'users', uid), { swimmerName });
+    showToast("✓ Nageur associé");
+  } catch(e) { showToast("Erreur : " + e.message); }
+}
+
+async function deleteUser(uid) {
+  if (!confirm("Supprimer cet utilisateur de la base ?")) return;
+  try {
+    const { deleteDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await deleteDoc(doc(window.db, 'users', uid));
+    showToast("Utilisateur supprimé");
+    loadAdminData();
+  } catch(e) { showToast("Erreur : " + e.message); }
 }
 
 
@@ -1251,7 +1580,7 @@ function renderResults() {
           <span class="rc-nage">${d.nage}</span>
           <span class="rc-niveau ${niv}">${d.niveau}</span>
           <span style="font-size:10px;color:var(--muted);margin-left:auto">${d.bassin==='50 mètres'?'50m':'25m'}</span>
-          <button class="rc-edit-btn" onclick="event.stopPropagation();openEditModal(${realIdx})">✏️</button>
+          <button class="rc-edit-btn" data-idx="${realIdx}" onclick="event.stopPropagation();openEditModal(${realIdx})">✏️</button>
         </div>
         <div class="rc-bottom">
           <span>📅 ${fmtDate(d.date)}</span>
@@ -1264,6 +1593,8 @@ function renderResults() {
       </div>
     </div>`;
   }).join('');
+  // Appliquer les permissions d'édition
+  setTimeout(() => applyEditButtonsVisibility(), 0);
 }
 
 // ── NAGEURS ──────────────────────────────────────────────────────────────────
@@ -1376,6 +1707,12 @@ function submitForm() {
     club: document.getElementById('form-club').value.trim(),
     bassin: document.getElementById('form-bassin').value,
   };
+  // Vérifier permissions : coach peut tout, nageur seulement son profil
+  if (userRole !== "coach" && userRole !== "nageur") { showToast("Accès non autorisé"); return; }
+  if (userRole === "nageur" && userProfile && STATE.currentSwimmer !== userProfile.swimmerName) {
+    showToast("Vous ne pouvez ajouter que vos propres performances");
+    return;
+  }
   STATE.swimmers[STATE.currentSwimmer].data.push(entry);
   saveState();
   document.getElementById('form-temps').value = '';
@@ -1447,6 +1784,11 @@ function closeDetailModalOutside(e) {
 let editingIdx = -1;
 
 function openEditModal(idx) {
+  // Vérifier les permissions
+  const isCoach = userRole === "coach";
+  const isNageurOwner = userRole === "nageur" && userProfile && 
+    STATE.currentSwimmer === userProfile.swimmerName;
+  if (!isCoach && !isNageurOwner) { showToast("Accès non autorisé"); return; }
   editingIdx = idx;
   const d = currentData()[idx];
   if (!d) return;
